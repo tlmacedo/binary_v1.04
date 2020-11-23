@@ -6,7 +6,7 @@ import java.util.Locale;
 public interface Constants {
 
     String REGEX_PONTUACAO = "[ !\"$%&'()*+,-./:;_`{|}]";
-    String VERSAO_APP = "v1.03";
+    String VERSAO_APP = "v1.04";
     String URL_BINARY = "wss://ws.binaryws.com/websockets/v3?app_id=";
     String APP_BINARY = "23487";
     String CONECT_URL_BINARY = URL_BINARY + APP_BINARY;
@@ -36,10 +36,10 @@ public interface Constants {
     /**
      * Print Console return messages Ws Binary.
      */
-    Boolean CONSOLE_BINARY_ALL = false;
-    Boolean CONSOLE_BINARY_ALL_SEM_TICKS = true;
+    Boolean CONSOLE_BINARY_ALL = true;
+    Boolean CONSOLE_BINARY_ALL_SEM_TICKS = false;
 
-    Boolean CONSOLE_BINARY_CONECTADO = false;
+    Boolean CONSOLE_BINARY_CONECTADO = true;
     Boolean CONSOLE_BINARY_AUTHORIZE = false;
     Boolean CONSOLE_BINARY_ERROR = false;
     Boolean CONSOLE_BINARY_TICK = false;

@@ -7,22 +7,7 @@ import java.util.List;
 public enum ROBOS {
 
     NULL(0, ""),
-//    DIFF0(1, "DIFF_MENOR"),
-
-    //    CALL0(10, "CALL"),
-//    PUT0(11, "PUT"),
-//    CALL_PUT0(12, "CALL_PUT_Reversed"),
-
-//    UNDER_0(20, "UNDER"),
-//    OVER_0(21, "OVER"),
-
-    EVEN_01_PORCENTAGEM(30, "EVEN-PORCENTAGEM"),
-    //EVEN_02_QTDMINIMA(33, "EVEN_ODD-QTD_MINIMA"),
-    ODD_01_PORCENTAGEM(31, "ODD-PORCENTAGEM"),
-    //ODD_02_QTDMINIMA(33, "EVEN_ODD-QTD_MINIMA"),
     EVEN_ODD_01_PORCENTAGEM(32, "EVEN_ODD-PORCENTAGEM"),
-    //EVEN_ODD_02_QTDMINIMA(33, "EVEN_ODD-QTD_MINIMA");
-
     OVER_01(40, "OVER");
 
     Integer cod;

@@ -4,6 +4,7 @@ package br.com.tlmacedo.binary.controller;
 import br.com.tlmacedo.binary.model.enums.CONTRACT_TYPE;
 import br.com.tlmacedo.binary.model.enums.MSG_TYPE;
 import br.com.tlmacedo.binary.model.vo.*;
+import br.com.tlmacedo.binary.services.Util_Json;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
@@ -17,6 +18,7 @@ public class WSClient extends WebSocketListener {
     private static ObjectMapper mapper = new ObjectMapper();
     private WebSocket myWebSocket;
     private Msg_type msgType;
+    private ActiveSymbol activeSymbol;
     private Error error;
     private History history;
     private Tick tick;
@@ -29,9 +31,11 @@ public class WSClient extends WebSocketListener {
     }
 
     public void connect() {
+
         OkHttpClient client = new OkHttpClient.Builder().build();
         Request request = new Request.Builder().url(CONECT_URL_BINARY).build();
-        setMyWebSocket(client.newWebSocket(request, this));
+        setMyWebSocket(client.newWebSocket(request, this));//synthetic_index
+
     }
 
     @Override
@@ -46,7 +50,9 @@ public class WSClient extends WebSocketListener {
 
     @Override
     public void onMessage(@NotNull WebSocket webSocket, @NotNull String text) {
-        super.onMessage(webSocket, text);
+        System.out.printf("...%s\n", text);
+        setMsgType((Msg_type) Util_Json.getMsg_Type(text));
+        imprime(text, getMsgType().getMsgType());
     }
 
     /**
@@ -82,9 +88,9 @@ public class WSClient extends WebSocketListener {
     }
 
     private void openOrClosedSocket(boolean conectado) {
-        Operacoes.setWsConectado(conectado);
         if (CONSOLE_BINARY_CONECTADO)
             System.out.printf("servidorConectado: [%s]\n", conectado);
+        Operacoes.setWsConectado(conectado);
     }
 
     private void refreshError(Error error) {
@@ -204,5 +210,13 @@ public class WSClient extends WebSocketListener {
 
     public void setTransaction(Transaction transaction) {
         this.transaction = transaction;
+    }
+
+    public ActiveSymbol getActiveSymbol() {
+        return activeSymbol;
+    }
+
+    public void setActiveSymbol(ActiveSymbol activeSymbol) {
+        this.activeSymbol = activeSymbol;
     }
 }

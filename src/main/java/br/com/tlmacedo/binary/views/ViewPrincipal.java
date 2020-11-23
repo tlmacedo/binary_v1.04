@@ -22,7 +22,7 @@ public class ViewPrincipal {
 
         setStage(new Stage());
 
-        setParent(FXMLLoader.load(getClass().getResource("/fxml/FxmlBinary_v1.03.fxml")));
+        setParent(FXMLLoader.load(getClass().getResource(String.format("/fxml/FxmlBinary_%s.fxml", VERSAO_APP))));
         setScene(new Scene(getParent()));
 
         getStage().setTitle(String.format("Binary by Thiago Macedo. %s", VERSAO_APP));

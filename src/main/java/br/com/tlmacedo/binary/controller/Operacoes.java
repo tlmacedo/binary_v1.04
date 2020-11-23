@@ -7,23 +7,30 @@ import br.com.tlmacedo.binary.model.dao.TransacoesDAO;
 import br.com.tlmacedo.binary.model.dao.TransactionDAO;
 import br.com.tlmacedo.binary.model.enums.ROBOS;
 import br.com.tlmacedo.binary.model.vo.*;
+import br.com.tlmacedo.binary.services.Service_Alert;
 import javafx.animation.Timeline;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.Initializable;
-import javafx.scene.chart.BarChart;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
+import javafx.scene.chart.*;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
+import java.math.RoundingMode;
 import java.net.URL;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
-import java.util.stream.Collectors;
+import java.util.TimeZone;
+
+import static br.com.tlmacedo.binary.interfaces.Constants.DTF_MINUTOS_SEGUNDOS;
 
 public class Operacoes implements Initializable {
 
@@ -42,19 +49,13 @@ public class Operacoes implements Initializable {
      */
     //** Variaveis de identificacoes das volatilidades
     static final ObservableList<Symbol> symbolObservableList = FXCollections.observableArrayList(getSymbolDAO().getAll(Symbol.class, "ativa=true", null));
-    static final Integer VOL_10 = 0;
-    static final Integer VOL_25 = 1;
-    static final Integer VOL_50 = 2;
-    static final Integer VOL_75 = 3;
-    static final Integer VOL_100 = 4;
-    static final Integer VOL_HZ10 = 5;
-    static final Integer VOL_HZ25 = 6;
-    static final Integer VOL_HZ50 = 7;
-    static final Integer VOL_HZ75 = 8;
-    static final Integer VOL_HZ100 = 9;
-    static final String[] VOL_NAME = getSymbolObservableList().stream().map(Symbol::getName).collect(Collectors.toList()).toArray(String[]::new);
-    static BooleanProperty VOL_1S = new SimpleBooleanProperty(false);
-
+    static final Integer QTD_OPERADORES = 5;
+    static final Integer OPERADOR_1 = 0;
+    static final Integer OPERADOR_2 = 1;
+    static final Integer OPERADOR_3 = 2;
+    static final Integer OPERADOR_4 = 3;
+    static final Integer OPERADOR_5 = 4;
+    static Symbol[] Operador = new Symbol[QTD_OPERADORES];
     /**
      * Contas corretora
      */
@@ -72,28 +73,26 @@ public class Operacoes implements Initializable {
      * Graficos
      */
     //** informações para graficos **
-    static IntegerProperty[] graficoMaiorQtdDigito = new IntegerProperty[getSymbolObservableList().size()];
-    static IntegerProperty[] graficoMenorQtdDigito = new IntegerProperty[getSymbolObservableList().size()];
     static IntegerProperty graficoQtdTicksAnalise = new SimpleIntegerProperty(1000);
     static IntegerProperty graficoQtdTicks = new SimpleIntegerProperty(100);
 
-    Text[][] graficoTxtLegendaDigito_R = new Text[getSymbolObservableList().size()][10];
+    Text[][] graficoTxtLegendaDigito_R = new Text[QTD_OPERADORES][10];
 
     //** gráficos em barras **
-    XYChart.Series<String, Number>[] graficoBarasVolatilidade_R = new XYChart.Series[getSymbolObservableList().size()];
-    ObservableList<Data<String, Number>>[] graficoBarrasListDataDigitos_R = new ObservableList[getSymbolObservableList().size()];
-    static ObservableList<LongProperty>[] graficoBarrasListQtdDigito_R = new ObservableList[getSymbolObservableList().size()];
+    XYChart.Series<String, Number>[] graficoBarrasVolatilidade_R = new XYChart.Series[QTD_OPERADORES];
+    ObservableList<Data<String, Number>>[] graficoBarrasListDataDigitos_R = new ObservableList[QTD_OPERADORES];
+    static ObservableList<LongProperty>[] graficoBarrasListQtdDigito_R = new ObservableList[QTD_OPERADORES];
 
 
     //** graficos em linha **
-    XYChart.Series<String, Number>[] graficoLinhasVolatilidade_R = new XYChart.Series[getSymbolObservableList().size()];
-    ObservableList<Data<String, Number>>[] graficoLinhasListDataDigitos_R = new ObservableList[getSymbolObservableList().size()];
-    static ObservableList<HistoricoDeTicks>[] graficoLinhasListQtdDigito_R = new ObservableList[getSymbolObservableList().size()];
+    XYChart.Series<String, Number>[] graficoLinhasVolatilidade_R = new XYChart.Series[QTD_OPERADORES];
+    ObservableList<Data<String, Number>>[] graficoLinhasListDataDigitos_R = new ObservableList[QTD_OPERADORES];
+    static ObservableList<HistoricoDeTicks>[] graficoLinhasListQtdDigito_R = new ObservableList[QTD_OPERADORES];
 
     //** gráficos MACD **
-    XYChart.Series<String, Number>[] graficoMACDVolatilidade_R = new XYChart.Series[getSymbolObservableList().size()];
-    ObservableList<Data<String, Number>>[] graficoMACDListDataDigitos_R = new ObservableList[getSymbolObservableList().size()];
-    static ObservableList<HistoricoDeTicks>[] graficoMACDListQtdDigito_R = new ObservableList[getSymbolObservableList().size()];
+    XYChart.Series<String, Number>[] graficoMACDVolatilidade_R = new XYChart.Series[QTD_OPERADORES];
+    ObservableList<Data<String, Number>>[] graficoMACDListDataDigitos_R = new ObservableList[QTD_OPERADORES];
+    static ObservableList<HistoricoDeTicks>[] graficoMACDListQtdDigito_R = new ObservableList[QTD_OPERADORES];
 
 
     /**
@@ -107,11 +106,33 @@ public class Operacoes implements Initializable {
      * Variaveis de controle do sistema
      */
 
+    BooleanProperty appAutorizado = new SimpleBooleanProperty(false);
     Timeline roboRelogio;
     LongProperty roboHoraInicial = new SimpleLongProperty();
     LongProperty roboCronometro = new SimpleLongProperty();
     BooleanProperty roboCronometroAtivado = new SimpleBooleanProperty(false);
 
+
+    /**
+     * Variaveis de informações para operadores
+     */
+    //** Variaveis **
+    static BooleanProperty[] operadorAtivo = new BooleanProperty[QTD_OPERADORES];
+    static BooleanProperty[] operadorCompraAutorizada = new BooleanProperty[QTD_OPERADORES];
+    static BooleanProperty[] operadorNegociando = new BooleanProperty[QTD_OPERADORES];
+    static BooleanProperty[] tickSubindo = new BooleanProperty[QTD_OPERADORES];
+    static ObjectProperty<Tick>[] ultimoTick = new ObjectProperty[QTD_OPERADORES];
+    static IntegerProperty[] digitoMaiorQuantidade = new IntegerProperty[QTD_OPERADORES];
+    static IntegerProperty[] digitoMenorQuantidade = new IntegerProperty[QTD_OPERADORES];
+    static StringProperty[] informacaoDetalhe01 = new StringProperty[QTD_OPERADORES];
+    static StringProperty[] informacaoValor01 = new StringProperty[QTD_OPERADORES];
+    static StringProperty[] informacaoDetalhe02 = new StringProperty[QTD_OPERADORES];
+    static StringProperty[] informacaoValor02 = new StringProperty[QTD_OPERADORES];
+    //** Listas **
+    static ObservableList<HistoricoDeTicks>[] historicoDeTicksObservableList = new ObservableList[QTD_OPERADORES];
+    static ObservableList<HistoricoDeTicks>[] HistoricoDeTicksAnaliseObservableList = new ObservableList[QTD_OPERADORES];
+    static ObservableList<Transaction>[] transactionObservableList = new ObservableList[QTD_OPERADORES];
+    static ObservableList<Transacoes> transacoesObservableList = FXCollections.observableArrayList();
 
     /**
      * <p>
@@ -160,185 +181,170 @@ public class Operacoes implements Initializable {
     public Label lblRoboCronometro;
 
 
-    // Volatilidade R10
-    public TitledPane tpn_R10;
-    public BarChart<String, Number> grafBar_R10;
-    public NumberAxis yAxisBar_R10;
-    public BarChart<String, Number> grafBar_HZ10;
-    public NumberAxis yAxisBar_HZ10;
-    public LineChart grafLine_R10;
-    public NumberAxis yAxisLine_R10;
-    public LineChart grafLine_HZ10;
-    public NumberAxis yAxisLine_HZ10;
-    public Label lblInf01_R10;
-    public Label lblVlrInf01_R10;
-    public Label lblPorcInf01_R10;
-    public Label lblInf02_R10;
-    public Label lblVlrInf02_R10;
-    public Label lblPorcInf02_R10;
-    public Label lblTickUltimo_R10;
-    public Label lblLegendaTickUltimo_R10;
-    public Button btnContratos_R10;
-    public Button btnComprar_R10;
-    public Button btnPausar_R10;
-    public Button btnStop_R10;
-    public Label lblInvestido_R10;
-    public Label lblInvestidoPorc_R10;
-    public Label lblPremiacao_R10;
-    public Label lblPremiacaoPorc_R10;
-    public Label lblLucro_R10;
-    public Label lblLucroPorc_R10;
-    public TableView<Transacoes> tbvTransacoes_R10;
-    public CheckBox chkAtivo_R10;
-    public Label tpnLblLegendaExecucoes_R10;
-    public Label tpnLblExecucoes_R10;
-    public Label tpnLblVitorias_R10;
-    public Label tpnLblDerrotas_R10;
-    public Label tpnLblLucro_R10;
+    // Operações 01
+    public TitledPane tpn_Op01;
+    public BarChart<String, Number> graficoBarras_Op01;
+    public NumberAxis yAxisBarras_Op01;
+    public LineChart graficoLinhas_Op01;
+    public NumberAxis yAxisLinhas_Op01;
+    public Label lblInf01_Op01;
+    public Label lblVlrInf01_Op01;
+    public Label lblPorcInf01_Op01;
+    public Label lblInf02_Op01;
+    public Label lblVlrInf02_Op01;
+    public Label lblPorcInf02_Op01;
+    public Label lblTickUltimo_Op01;
+    public Label lblLegendaTickUltimo_Op01;
+    public Button btnContratos_Op01;
+    public Button btnComprar_Op01;
+    public Button btnPausar_Op01;
+    public Button btnStop_Op01;
+    public Label lblInvestido_Op01;
+    public Label lblInvestidoPorc_Op01;
+    public Label lblPremiacao_Op01;
+    public Label lblPremiacaoPorc_Op01;
+    public Label lblLucro_Op01;
+    public Label lblLucroPorc_Op01;
+    public TableView<Transacoes> tbvTransacoes_Op01;
+    public ComboBox<Symbol> cboMercado01;
+    public CheckBox chkAtivo_Op01;
+    public Label tpnLblLegendaExecucoes_Op01;
+    public Label tpnLblExecucoes_Op01;
+    public Label tpnLblVitorias_Op01;
+    public Label tpnLblDerrotas_Op01;
+    public Label tpnLblLucro_Op01;
 
-    // Volatilidade R25
-    public TitledPane tpn_R25;
-    public BarChart<String, Number> grafBar_R25;
-    public NumberAxis yAxisBar_R25;
-    public BarChart<String, Number> grafBar_HZ25;
-    public NumberAxis yAxisBar_HZ25;
-    public LineChart grafLine_R25;
-    public NumberAxis yAxisLine_R25;
-    public LineChart grafLine_HZ25;
-    public NumberAxis yAxisLine_HZ25;
-    public Label lblInf01_R25;
-    public Label lblVlrInf01_R25;
-    public Label lblPorcInf01_R25;
-    public Label lblInf02_R25;
-    public Label lblVlrInf02_R25;
-    public Label lblPorcInf02_R25;
-    public Label lblTickUltimo_R25;
-    public Label lblLegendaTickUltimo_R25;
-    public Button btnContratos_R25;
-    public Button btnComprar_R25;
-    public Button btnPausar_R25;
-    public Button btnStop_R25;
-    public Label lblInvestido_R25;
-    public Label lblInvestidoPorc_R25;
-    public Label lblPremiacao_R25;
-    public Label lblPremiacaoPorc_R25;
-    public Label lblLucro_R25;
-    public Label lblLucroPorc_R25;
-    public TableView<Transacoes> tbvTransacoes_R25;
-    public CheckBox chkAtivo_R25;
-    public Label tpnLblLegendaExecucoes_R25;
-    public Label tpnLblExecucoes_R25;
-    public Label tpnLblVitorias_R25;
-    public Label tpnLblDerrotas_R25;
-    public Label tpnLblLucro_R25;
+    // Operações 02
+    public TitledPane tpn_Op02;
+    public BarChart<String, Number> graficoBarras_Op02;
+    public NumberAxis yAxisBarras_Op02;
+    public LineChart graficoLinhas_Op02;
+    public NumberAxis yAxisLinhas_Op02;
+    public Label lblInf01_Op02;
+    public Label lblVlrInf01_Op02;
+    public Label lblPorcInf01_Op02;
+    public Label lblInf02_Op02;
+    public Label lblVlrInf02_Op02;
+    public Label lblPorcInf02_Op02;
+    public Label lblTickUltimo_Op02;
+    public Label lblLegendaTickUltimo_Op02;
+    public Button btnContratos_Op02;
+    public Button btnComprar_Op02;
+    public Button btnPausar_Op02;
+    public Button btnStop_Op02;
+    public Label lblInvestido_Op02;
+    public Label lblInvestidoPorc_Op02;
+    public Label lblPremiacao_Op02;
+    public Label lblPremiacaoPorc_Op02;
+    public Label lblLucro_Op02;
+    public Label lblLucroPorc_Op02;
+    public TableView<Transacoes> tbvTransacoes_Op02;
+    public ComboBox<Symbol> cboMercado02;
+    public CheckBox chkAtivo_Op02;
+    public Label tpnLblLegendaExecucoes_Op02;
+    public Label tpnLblExecucoes_Op02;
+    public Label tpnLblVitorias_Op02;
+    public Label tpnLblDerrotas_Op02;
+    public Label tpnLblLucro_Op02;
 
-    // Volatilidade R50
-    public TitledPane tpn_R50;
-    public BarChart<String, Number> grafBar_R50;
-    public NumberAxis yAxisBar_R50;
-    public BarChart<String, Number> grafBar_HZ50;
-    public NumberAxis yAxisBar_HZ50;
-    public LineChart grafLine_R50;
-    public NumberAxis yAxisLine_R50;
-    public LineChart grafLine_HZ50;
-    public NumberAxis yAxisLine_HZ50;
-    public Label lblInf01_R50;
-    public Label lblVlrInf01_R50;
-    public Label lblPorcInf01_R50;
-    public Label lblInf02_R50;
-    public Label lblVlrInf02_R50;
-    public Label lblPorcInf02_R50;
-    public Label lblTickUltimo_R50;
-    public Label lblLegendaTickUltimo_R50;
-    public Button btnContratos_R50;
-    public Button btnComprar_R50;
-    public Button btnPausar_R50;
-    public Button btnStop_R50;
-    public Label lblInvestido_R50;
-    public Label lblInvestidoPorc_R50;
-    public Label lblPremiacao_R50;
-    public Label lblPremiacaoPorc_R50;
-    public Label lblLucro_R50;
-    public Label lblLucroPorc_R50;
-    public TableView<Transacoes> tbvTransacoes_R50;
-    public CheckBox chkAtivo_R50;
-    public Label tpnLblLegendaExecucoes_R50;
-    public Label tpnLblExecucoes_R50;
-    public Label tpnLblVitorias_R50;
-    public Label tpnLblDerrotas_R50;
-    public Label tpnLblLucro_R50;
+    // Operações 03
+    public TitledPane tpn_Op03;
+    public BarChart<String, Number> graficoBarras_Op03;
+    public NumberAxis yAxisBarras_Op03;
+    public LineChart graficoLinhas_Op03;
+    public NumberAxis yAxisLinhas_Op03;
+    public Label lblInf01_Op03;
+    public Label lblVlrInf01_Op03;
+    public Label lblPorcInf01_Op03;
+    public Label lblInf02_Op03;
+    public Label lblVlrInf02_Op03;
+    public Label lblPorcInf02_Op03;
+    public Label lblTickUltimo_Op03;
+    public Label lblLegendaTickUltimo_Op03;
+    public Button btnContratos_Op03;
+    public Button btnComprar_Op03;
+    public Button btnPausar_Op03;
+    public Button btnStop_Op03;
+    public Label lblInvestido_Op03;
+    public Label lblInvestidoPorc_Op03;
+    public Label lblPremiacao_Op03;
+    public Label lblPremiacaoPorc_Op03;
+    public Label lblLucro_Op03;
+    public Label lblLucroPorc_Op03;
+    public TableView<Transacoes> tbvTransacoes_Op03;
+    public ComboBox<Symbol> cboMercado03;
+    public CheckBox chkAtivo_Op03;
+    public Label tpnLblLegendaExecucoes_Op03;
+    public Label tpnLblExecucoes_Op03;
+    public Label tpnLblVitorias_Op03;
+    public Label tpnLblDerrotas_Op03;
+    public Label tpnLblLucro_Op03;
 
-    // Volatilidade R75
-    public TitledPane tpn_R75;
-    public BarChart<String, Number> grafBar_R75;
-    public NumberAxis yAxisBar_R75;
-    public BarChart<String, Number> grafBar_HZ75;
-    public NumberAxis yAxisBar_HZ75;
-    public LineChart grafLine_R75;
-    public NumberAxis yAxisLine_R75;
-    public LineChart grafLine_HZ75;
-    public NumberAxis yAxisLine_HZ75;
-    public Label lblInf01_R75;
-    public Label lblVlrInf01_R75;
-    public Label lblPorcInf01_R75;
-    public Label lblInf02_R75;
-    public Label lblVlrInf02_R75;
-    public Label lblPorcInf02_R75;
-    public Label lblTickUltimo_R75;
-    public Label lblLegendaTickUltimo_R75;
-    public Button btnContratos_R75;
-    public Button btnComprar_R75;
-    public Button btnPausar_R75;
-    public Button btnStop_R75;
-    public Label lblInvestido_R75;
-    public Label lblInvestidoPorc_R75;
-    public Label lblPremiacao_R75;
-    public Label lblPremiacaoPorc_R75;
-    public Label lblLucro_R75;
-    public Label lblLucroPorc_R75;
-    public TableView<Transacoes> tbvTransacoes_R75;
-    public CheckBox chkAtivo_R75;
-    public Label tpnLblLegendaExecucoes_R75;
-    public Label tpnLblExecucoes_R75;
-    public Label tpnLblVitorias_R75;
-    public Label tpnLblDerrotas_R75;
-    public Label tpnLblLucro_R75;
+    // Operações 04
+    public TitledPane tpn_Op04;
+    public BarChart<String, Number> graficoBarras_Op04;
+    public NumberAxis yAxisBarras_Op04;
+    public LineChart graficoLinhas_Op04;
+    public NumberAxis yAxisLinhas_Op04;
+    public Label lblInf01_Op04;
+    public Label lblVlrInf01_Op04;
+    public Label lblPorcInf01_Op04;
+    public Label lblInf02_Op04;
+    public Label lblVlrInf02_Op04;
+    public Label lblPorcInf02_Op04;
+    public Label lblTickUltimo_Op04;
+    public Label lblLegendaTickUltimo_Op04;
+    public Button btnContratos_Op04;
+    public Button btnComprar_Op04;
+    public Button btnPausar_Op04;
+    public Button btnStop_Op04;
+    public Label lblInvestido_Op04;
+    public Label lblInvestidoPorc_Op04;
+    public Label lblPremiacao_Op04;
+    public Label lblPremiacaoPorc_Op04;
+    public Label lblLucro_Op04;
+    public Label lblLucroPorc_Op04;
+    public TableView<Transacoes> tbvTransacoes_Op04;
+    public ComboBox<Symbol> cboMercado04;
+    public CheckBox chkAtivo_Op04;
+    public Label tpnLblLegendaExecucoes_Op04;
+    public Label tpnLblExecucoes_Op04;
+    public Label tpnLblVitorias_Op04;
+    public Label tpnLblDerrotas_Op04;
+    public Label tpnLblLucro_Op04;
 
-    // Volatilidade R100
-    public TitledPane tpn_R100;
-    public BarChart<String, Number> grafBar_R100;
-    public NumberAxis yAxisBar_R100;
-    public BarChart<String, Number> grafBar_HZ100;
-    public NumberAxis yAxisBar_HZ100;
-    public LineChart grafLine_R100;
-    public NumberAxis yAxisLine_R100;
-    public LineChart grafLine_HZ100;
-    public NumberAxis yAxisLine_HZ100;
-    public Label lblInf01_R100;
-    public Label lblVlrInf01_R100;
-    public Label lblPorcInf01_R100;
-    public Label lblInf02_R100;
-    public Label lblVlrInf02_R100;
-    public Label lblPorcInf02_R100;
-    public Label lblTickUltimo_R100;
-    public Label lblLegendaTickUltimo_R100;
-    public Button btnContratos_R100;
-    public Button btnComprar_R100;
-    public Button btnPausar_R100;
-    public Button btnStop_R100;
-    public Label lblInvestido_R100;
-    public Label lblInvestidoPorc_R100;
-    public Label lblPremiacao_R100;
-    public Label lblPremiacaoPorc_R100;
-    public Label lblLucro_R100;
-    public Label lblLucroPorc_R100;
-    public TableView<Transacoes> tbvTransacoes_R100;
-    public CheckBox chkAtivo_R100;
-    public Label tpnLblLegendaExecucoes_R100;
-    public Label tpnLblExecucoes_R100;
-    public Label tpnLblVitorias_R100;
-    public Label tpnLblDerrotas_R100;
-    public Label tpnLblLucro_R100;
+    // Operações 05
+    public TitledPane tpn_Op05;
+    public BarChart<String, Number> graficoBarras_Op05;
+    public NumberAxis yAxisBarras_Op05;
+    public LineChart graficoLinhas_Op05;
+    public NumberAxis yAxisLinhas_Op05;
+    public Label lblInf01_Op05;
+    public Label lblVlrInf01_Op05;
+    public Label lblPorcInf01_Op05;
+    public Label lblInf02_Op05;
+    public Label lblVlrInf02_Op05;
+    public Label lblPorcInf02_Op05;
+    public Label lblTickUltimo_Op05;
+    public Label lblLegendaTickUltimo_Op05;
+    public Button btnContratos_Op05;
+    public Button btnComprar_Op05;
+    public Button btnPausar_Op05;
+    public Button btnStop_Op05;
+    public Label lblInvestido_Op05;
+    public Label lblInvestidoPorc_Op05;
+    public Label lblPremiacao_Op05;
+    public Label lblPremiacaoPorc_Op05;
+    public Label lblLucro_Op05;
+    public Label lblLucroPorc_Op05;
+    public TableView<Transacoes> tbvTransacoes_Op05;
+    public ComboBox<Symbol> cboMercado05;
+    public CheckBox chkAtivo_Op05;
+    public Label tpnLblLegendaExecucoes_Op05;
+    public Label tpnLblExecucoes_Op05;
+    public Label tpnLblVitorias_Op05;
+    public Label tpnLblDerrotas_Op05;
+    public Label tpnLblLucro_Op05;
 
     /**
      * <p>
@@ -352,7 +358,86 @@ public class Operacoes implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
 
+
+        carregarVariaveisObjetos();
+
     }
+
+    private Task getTaskWsBinary() {
+        return new Task() {
+            @Override
+            protected Object call() throws Exception {
+                getWsClient().connect();
+                wsConectadoProperty().addListener((ov, o, n) -> {
+                    if (n == null) return;
+                    try {
+                        if (n) {
+                            String jsonActiveSymbols = String.format("{\"active_symbols\":\"brief\",\"product_type\":\"basic\"}");
+                            System.out.printf("enviei: %s\n", jsonActiveSymbols);
+                            getWsClient().getMyWebSocket().send(jsonActiveSymbols);
+//                            getWsClient().getMyWebSocket().send("{\n" +
+//                                    "  \"active_symbols\": \"brief\",\n" +
+//                                    "  \"product_type\": \"basic\"\n" +
+//                                    "}");
+                        } else {
+                            getBtnStop().fire();
+                            new Service_Alert("Conexão fechou", "Conexão com a binary foi fechada!!", null)
+                                    .alertOk();
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                });
+                return null;
+            }
+        };
+    }
+
+    /**
+     * Carregar Objetos e Variaveis
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     */
+
+    private void carregarVariaveisObjetos() {
+
+        for (int operadorId = 0; operadorId < QTD_OPERADORES; operadorId++) {
+            getOperadorAtivo()[operadorId] = new SimpleBooleanProperty(false);
+            getOperadorCompraAutorizada()[operadorId] = new SimpleBooleanProperty(false);
+            getOperadorNegociando()[operadorId] = new SimpleBooleanProperty(false);
+            getTickSubindo()[operadorId] = new SimpleBooleanProperty();
+            getUltimoTick()[operadorId] = new SimpleObjectProperty<>();
+            getDigitoMaiorQuantidade()[operadorId] = new SimpleIntegerProperty();
+            getDigitoMenorQuantidade()[operadorId] = new SimpleIntegerProperty();
+            getInformacaoDetalhe01()[operadorId] = new SimpleStringProperty();
+            getInformacaoValor01()[operadorId] = new SimpleStringProperty();
+            getInformacaoValor01()[operadorId] = new SimpleStringProperty();
+            getInformacaoValor02()[operadorId] = new SimpleStringProperty();
+
+            getHistoricoDeTicksObservableList()[operadorId] = FXCollections.observableArrayList();
+            getHistoricoDeTicksAnaliseObservableList()[operadorId] = FXCollections.observableArrayList();
+            getTransactionObservableList()[operadorId] = FXCollections.observableArrayList();
+        }
+
+        Thread threadInicial = new Thread(getTaskWsBinary());
+        threadInicial.setDaemon(true);
+        threadInicial.start();
+
+    }
+
+    private void conectarObjetosEmVariaveis() {
+
+    }
+
+    /**
+     * Socilitações para Web Service da Binary!!!
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     */
 
 
     /**
@@ -364,6 +449,115 @@ public class Operacoes implements Initializable {
      * <p>
      */
 
+    /**
+     * Atualizações carregamentos e manipulações com graficos.
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     */
+
+    private void graficoEmBarras(Integer operadorId) {
+
+        getGraficoBarrasListDataDigitos_R()[operadorId] = FXCollections.observableArrayList();
+        getGraficoBarrasListQtdDigito_R()[operadorId] = FXCollections.observableArrayList();
+        getGraficoBarrasVolatilidade_R()[operadorId] = new XYChart.Series<>();
+
+        for (int digito = 0; digito < 10; digito++) {
+            getGraficoTxtLegendaDigito_R()[operadorId][digito] = new Text();
+            getGraficoTxtLegendaDigito_R()[operadorId][digito].setFont(Font.font("Arial", 10));
+            getGraficoTxtLegendaDigito_R()[operadorId][digito].setStyle("-fx-text-fill: #fff;");
+
+            getGraficoBarrasListQtdDigito_R()[operadorId].add(digito, new SimpleLongProperty(0));
+            getGraficoBarrasListDataDigitos_R()[operadorId].add(new Data<>(String.valueOf(digito), 0));
+
+            int finalDigito = digito;
+            getGraficoBarrasListQtdDigito_R()[operadorId].get(digito).addListener((ov, o, n) -> {
+                if (n == null) return;
+                Double porcento = n.intValue() != 0
+                        ? (n.intValue() / getGraficoQtdTicks() / 100.) : 0.;
+                getGraficoBarrasListDataDigitos_R()[operadorId].get(finalDigito).setYValue(porcento.intValue());
+                getGraficoTxtLegendaDigito_R()[operadorId][finalDigito].setText(String.format("%s%%", porcento.intValue()));
+            });
+        }
+
+        if (operadorId.equals(getOperador1())) {
+            getyAxisBarras_Op01().setUpperBound(25);
+            getGraficoBarras_Op01().getData().add(getGraficoBarrasVolatilidade_R()[getOperador1()]);
+            getGraficoBarras_Op01().setVisible(true);
+        } else if (operadorId.equals(getOperador2())) {
+            getyAxisBarras_Op02().setUpperBound(25);
+            getGraficoBarras_Op02().getData().add(getGraficoBarrasVolatilidade_R()[getOperador2()]);
+            getGraficoBarras_Op02().setVisible(true);
+        } else if (operadorId.equals(getOperador3())) {
+            getyAxisBarras_Op03().setUpperBound(25);
+            getGraficoBarras_Op03().getData().add(getGraficoBarrasVolatilidade_R()[getOperador3()]);
+            getGraficoBarras_Op03().setVisible(true);
+        } else if (operadorId.equals(getOperador4())) {
+            getyAxisBarras_Op04().setUpperBound(25);
+            getGraficoBarras_Op04().getData().add(getGraficoBarrasVolatilidade_R()[getOperador4()]);
+            getGraficoBarras_Op04().setVisible(true);
+        } else if (operadorId.equals(getOperador5())) {
+            getyAxisBarras_Op05().setUpperBound(25);
+            getGraficoBarras_Op05().getData().add(getGraficoBarrasVolatilidade_R()[getOperador5()]);
+            getGraficoBarras_Op05().setVisible(true);
+        }
+
+    }
+
+    private void graficoEmLinhas(Integer operadorId) {
+
+        getGraficoLinhasListDataDigitos_R()[operadorId] = FXCollections.observableArrayList();
+        getGraficoLinhasListQtdDigito_R()[operadorId] = FXCollections.observableArrayList();
+        getGraficoLinhasVolatilidade_R()[operadorId] = new XYChart.Series<>();
+
+        getGraficoLinhasListQtdDigito_R()[operadorId].addListener((ListChangeListener<? super HistoricoDeTicks>) c -> {
+            while (c.next()) {
+                for (HistoricoDeTicks tick : c.getRemoved())
+                    getGraficoLinhasListDataDigitos_R()[operadorId].remove(0);
+
+                for (HistoricoDeTicks tick : c.getAddedSubList()) {
+                    String hora = DTF_MINUTOS_SEGUNDOS.format(LocalDateTime.ofInstant(Instant.ofEpochSecond(tick.getTime()),
+                            TimeZone.getDefault().toZoneId()).toLocalTime());
+                    getGraficoLinhasListDataDigitos_R()[operadorId].add(new Data<>(hora, tick.getPrice()
+                            .setScale(tick.getPip_size(), RoundingMode.HALF_UP).doubleValue()));
+                }
+            }
+        });
+
+
+        if (operadorId.equals(getOperador1())) {
+            getyAxisLinhas_Op01().setUpperBound(25);
+            getGraficoLinhas_Op01().getData().add(getGraficoLinhasVolatilidade_R()[getOperador1()]);
+            getGraficoLinhas_Op01().setVisible(true);
+        } else if (operadorId.equals(getOperador2())) {
+            getyAxisLinhas_Op02().setUpperBound(25);
+            getGraficoLinhas_Op02().getData().add(getGraficoLinhasVolatilidade_R()[getOperador2()]);
+            getGraficoLinhas_Op02().setVisible(true);
+        } else if (operadorId.equals(getOperador3())) {
+            getyAxisLinhas_Op03().setUpperBound(25);
+            getGraficoLinhas_Op03().getData().add(getGraficoLinhasVolatilidade_R()[getOperador3()]);
+            getGraficoLinhas_Op03().setVisible(true);
+        } else if (operadorId.equals(getOperador4())) {
+            getyAxisLinhas_Op04().setUpperBound(25);
+            getGraficoLinhas_Op04().getData().add(getGraficoLinhasVolatilidade_R()[getOperador4()]);
+            getGraficoLinhas_Op04().setVisible(true);
+        } else if (operadorId.equals(getOperador5())) {
+            getyAxisLinhas_Op05().setUpperBound(25);
+            getGraficoLinhas_Op05().getData().add(getGraficoLinhasVolatilidade_R()[getOperador5()]);
+            getGraficoLinhas_Op05().setVisible(true);
+        }
+
+    }
+
+    /**
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     */
 
     public static SymbolDAO getSymbolDAO() {
         return symbolDAO;
@@ -401,60 +595,36 @@ public class Operacoes implements Initializable {
         return symbolObservableList;
     }
 
-    public static Integer getVol10() {
-        return VOL_10;
+    public static Integer getQtdOperadores() {
+        return QTD_OPERADORES;
     }
 
-    public static Integer getVol25() {
-        return VOL_25;
+    public static Integer getOperador1() {
+        return OPERADOR_1;
     }
 
-    public static Integer getVol50() {
-        return VOL_50;
+    public static Integer getOperador2() {
+        return OPERADOR_2;
     }
 
-    public static Integer getVol75() {
-        return VOL_75;
+    public static Integer getOperador3() {
+        return OPERADOR_3;
     }
 
-    public static Integer getVol100() {
-        return VOL_100;
+    public static Integer getOperador4() {
+        return OPERADOR_4;
     }
 
-    public static Integer getVolHz10() {
-        return VOL_HZ10;
+    public static Integer getOperador5() {
+        return OPERADOR_5;
     }
 
-    public static Integer getVolHz25() {
-        return VOL_HZ25;
+    public static Symbol[] getOperador() {
+        return Operador;
     }
 
-    public static Integer getVolHz50() {
-        return VOL_HZ50;
-    }
-
-    public static Integer getVolHz75() {
-        return VOL_HZ75;
-    }
-
-    public static Integer getVolHz100() {
-        return VOL_HZ100;
-    }
-
-    public static String[] getVolName() {
-        return VOL_NAME;
-    }
-
-    public static boolean isVol1s() {
-        return VOL_1S.get();
-    }
-
-    public static BooleanProperty VOL_1SProperty() {
-        return VOL_1S;
-    }
-
-    public static void setVol1s(boolean vol1s) {
-        VOL_1S.set(vol1s);
+    public static void setOperador(Symbol[] operador) {
+        Operador = operador;
     }
 
     public static ContaToken getContaToken() {
@@ -505,22 +675,6 @@ public class Operacoes implements Initializable {
         Operacoes.wsConectado.set(wsConectado);
     }
 
-    public static IntegerProperty[] getGraficoMaiorQtdDigito() {
-        return graficoMaiorQtdDigito;
-    }
-
-    public static void setGraficoMaiorQtdDigito(IntegerProperty[] graficoMaiorQtdDigito) {
-        Operacoes.graficoMaiorQtdDigito = graficoMaiorQtdDigito;
-    }
-
-    public static IntegerProperty[] getGraficoMenorQtdDigito() {
-        return graficoMenorQtdDigito;
-    }
-
-    public static void setGraficoMenorQtdDigito(IntegerProperty[] graficoMenorQtdDigito) {
-        Operacoes.graficoMenorQtdDigito = graficoMenorQtdDigito;
-    }
-
     public static int getGraficoQtdTicksAnalise() {
         return graficoQtdTicksAnalise.get();
     }
@@ -553,12 +707,12 @@ public class Operacoes implements Initializable {
         this.graficoTxtLegendaDigito_R = graficoTxtLegendaDigito_R;
     }
 
-    public XYChart.Series<String, Number>[] getGraficoBarasVolatilidade_R() {
-        return graficoBarasVolatilidade_R;
+    public XYChart.Series<String, Number>[] getGraficoBarrasVolatilidade_R() {
+        return graficoBarrasVolatilidade_R;
     }
 
-    public void setGraficoBarasVolatilidade_R(XYChart.Series<String, Number>[] graficoBarasVolatilidade_R) {
-        this.graficoBarasVolatilidade_R = graficoBarasVolatilidade_R;
+    public void setGraficoBarrasVolatilidade_R(XYChart.Series<String, Number>[] graficoBarrasVolatilidade_R) {
+        this.graficoBarrasVolatilidade_R = graficoBarrasVolatilidade_R;
     }
 
     public ObservableList<Data<String, Number>>[] getGraficoBarrasListDataDigitos_R() {
@@ -649,6 +803,18 @@ public class Operacoes implements Initializable {
         Operacoes.roboEstrategia.set(roboEstrategia);
     }
 
+    public boolean isAppAutorizado() {
+        return appAutorizado.get();
+    }
+
+    public BooleanProperty appAutorizadoProperty() {
+        return appAutorizado;
+    }
+
+    public void setAppAutorizado(boolean appAutorizado) {
+        this.appAutorizado.set(appAutorizado);
+    }
+
     public Timeline getRoboRelogio() {
         return roboRelogio;
     }
@@ -691,6 +857,126 @@ public class Operacoes implements Initializable {
 
     public void setRoboCronometroAtivado(boolean roboCronometroAtivado) {
         this.roboCronometroAtivado.set(roboCronometroAtivado);
+    }
+
+    public static BooleanProperty[] getOperadorAtivo() {
+        return operadorAtivo;
+    }
+
+    public static void setOperadorAtivo(BooleanProperty[] operadorAtivo) {
+        Operacoes.operadorAtivo = operadorAtivo;
+    }
+
+    public static BooleanProperty[] getOperadorCompraAutorizada() {
+        return operadorCompraAutorizada;
+    }
+
+    public static void setOperadorCompraAutorizada(BooleanProperty[] operadorCompraAutorizada) {
+        Operacoes.operadorCompraAutorizada = operadorCompraAutorizada;
+    }
+
+    public static BooleanProperty[] getOperadorNegociando() {
+        return operadorNegociando;
+    }
+
+    public static void setOperadorNegociando(BooleanProperty[] operadorNegociando) {
+        Operacoes.operadorNegociando = operadorNegociando;
+    }
+
+    public static BooleanProperty[] getTickSubindo() {
+        return tickSubindo;
+    }
+
+    public static void setTickSubindo(BooleanProperty[] tickSubindo) {
+        Operacoes.tickSubindo = tickSubindo;
+    }
+
+    public static ObjectProperty<Tick>[] getUltimoTick() {
+        return ultimoTick;
+    }
+
+    public static void setUltimoTick(ObjectProperty<Tick>[] ultimoTick) {
+        Operacoes.ultimoTick = ultimoTick;
+    }
+
+    public static IntegerProperty[] getDigitoMaiorQuantidade() {
+        return digitoMaiorQuantidade;
+    }
+
+    public static void setDigitoMaiorQuantidade(IntegerProperty[] digitoMaiorQuantidade) {
+        Operacoes.digitoMaiorQuantidade = digitoMaiorQuantidade;
+    }
+
+    public static IntegerProperty[] getDigitoMenorQuantidade() {
+        return digitoMenorQuantidade;
+    }
+
+    public static void setDigitoMenorQuantidade(IntegerProperty[] digitoMenorQuantidade) {
+        Operacoes.digitoMenorQuantidade = digitoMenorQuantidade;
+    }
+
+    public static StringProperty[] getInformacaoDetalhe01() {
+        return informacaoDetalhe01;
+    }
+
+    public static void setInformacaoDetalhe01(StringProperty[] informacaoDetalhe01) {
+        Operacoes.informacaoDetalhe01 = informacaoDetalhe01;
+    }
+
+    public static StringProperty[] getInformacaoValor01() {
+        return informacaoValor01;
+    }
+
+    public static void setInformacaoValor01(StringProperty[] informacaoValor01) {
+        Operacoes.informacaoValor01 = informacaoValor01;
+    }
+
+    public static StringProperty[] getInformacaoDetalhe02() {
+        return informacaoDetalhe02;
+    }
+
+    public static void setInformacaoDetalhe02(StringProperty[] informacaoDetalhe02) {
+        Operacoes.informacaoDetalhe02 = informacaoDetalhe02;
+    }
+
+    public static StringProperty[] getInformacaoValor02() {
+        return informacaoValor02;
+    }
+
+    public static void setInformacaoValor02(StringProperty[] informacaoValor02) {
+        Operacoes.informacaoValor02 = informacaoValor02;
+    }
+
+    public static ObservableList<HistoricoDeTicks>[] getHistoricoDeTicksObservableList() {
+        return historicoDeTicksObservableList;
+    }
+
+    public static void setHistoricoDeTicksObservableList(ObservableList<HistoricoDeTicks>[] historicoDeTicksObservableList) {
+        Operacoes.historicoDeTicksObservableList = historicoDeTicksObservableList;
+    }
+
+    public static ObservableList<HistoricoDeTicks>[] getHistoricoDeTicksAnaliseObservableList() {
+        return HistoricoDeTicksAnaliseObservableList;
+    }
+
+    public static void setHistoricoDeTicksAnaliseObservableList(ObservableList<HistoricoDeTicks>[] historicoDeTicksAnaliseObservableList) {
+        HistoricoDeTicksAnaliseObservableList = historicoDeTicksAnaliseObservableList;
+    }
+
+    public static ObservableList<Transaction>[] getTransactionObservableList() {
+        return transactionObservableList;
+    }
+
+    public static void setTransactionObservableList(ObservableList<Transaction>[] transactionObservableList) {
+        Operacoes.transactionObservableList = transactionObservableList;
+    }
+
+    public static ObservableList<Transacoes> getTransacoesObservableList() {
+        return transacoesObservableList;
+    }
+
+    public static void setTransacoesObservableList(ObservableList<Transacoes> transacoesObservableList) {
+        Operacoes.transacoesObservableList = transacoesObservableList;
     }
 
     public AnchorPane getPainelViewBinary() {
@@ -917,1363 +1203,1243 @@ public class Operacoes implements Initializable {
         this.lblRoboCronometro = lblRoboCronometro;
     }
 
-    public TitledPane getTpn_R10() {
-        return tpn_R10;
+    public TitledPane getTpn_Op01() {
+        return tpn_Op01;
     }
 
-    public void setTpn_R10(TitledPane tpn_R10) {
-        this.tpn_R10 = tpn_R10;
+    public void setTpn_Op01(TitledPane tpn_Op01) {
+        this.tpn_Op01 = tpn_Op01;
     }
 
-    public BarChart<String, Number> getGrafBar_R10() {
-        return grafBar_R10;
+    public BarChart<String, Number> getGraficoBarras_Op01() {
+        return graficoBarras_Op01;
     }
 
-    public void setGrafBar_R10(BarChart<String, Number> grafBar_R10) {
-        this.grafBar_R10 = grafBar_R10;
+    public void setGraficoBarras_Op01(BarChart<String, Number> graficoBarras_Op01) {
+        this.graficoBarras_Op01 = graficoBarras_Op01;
     }
 
-    public NumberAxis getyAxisBar_R10() {
-        return yAxisBar_R10;
+    public NumberAxis getyAxisBarras_Op01() {
+        return yAxisBarras_Op01;
     }
 
-    public void setyAxisBar_R10(NumberAxis yAxisBar_R10) {
-        this.yAxisBar_R10 = yAxisBar_R10;
+    public void setyAxisBarras_Op01(NumberAxis yAxisBarras_Op01) {
+        this.yAxisBarras_Op01 = yAxisBarras_Op01;
     }
 
-    public BarChart<String, Number> getGrafBar_HZ10() {
-        return grafBar_HZ10;
+    public LineChart getGraficoLinhas_Op01() {
+        return graficoLinhas_Op01;
     }
 
-    public void setGrafBar_HZ10(BarChart<String, Number> grafBar_HZ10) {
-        this.grafBar_HZ10 = grafBar_HZ10;
+    public void setGraficoLinhas_Op01(LineChart graficoLinhas_Op01) {
+        this.graficoLinhas_Op01 = graficoLinhas_Op01;
     }
 
-    public NumberAxis getyAxisBar_HZ10() {
-        return yAxisBar_HZ10;
+    public NumberAxis getyAxisLinhas_Op01() {
+        return yAxisLinhas_Op01;
     }
 
-    public void setyAxisBar_HZ10(NumberAxis yAxisBar_HZ10) {
-        this.yAxisBar_HZ10 = yAxisBar_HZ10;
+    public void setyAxisLinhas_Op01(NumberAxis yAxisLinhas_Op01) {
+        this.yAxisLinhas_Op01 = yAxisLinhas_Op01;
     }
 
-    public LineChart getGrafLine_R10() {
-        return grafLine_R10;
+    public Label getLblInf01_Op01() {
+        return lblInf01_Op01;
     }
 
-    public void setGrafLine_R10(LineChart grafLine_R10) {
-        this.grafLine_R10 = grafLine_R10;
+    public void setLblInf01_Op01(Label lblInf01_Op01) {
+        this.lblInf01_Op01 = lblInf01_Op01;
     }
 
-    public NumberAxis getyAxisLine_R10() {
-        return yAxisLine_R10;
+    public Label getLblVlrInf01_Op01() {
+        return lblVlrInf01_Op01;
     }
 
-    public void setyAxisLine_R10(NumberAxis yAxisLine_R10) {
-        this.yAxisLine_R10 = yAxisLine_R10;
+    public void setLblVlrInf01_Op01(Label lblVlrInf01_Op01) {
+        this.lblVlrInf01_Op01 = lblVlrInf01_Op01;
     }
 
-    public LineChart getGrafLine_HZ10() {
-        return grafLine_HZ10;
+    public Label getLblPorcInf01_Op01() {
+        return lblPorcInf01_Op01;
     }
 
-    public void setGrafLine_HZ10(LineChart grafLine_HZ10) {
-        this.grafLine_HZ10 = grafLine_HZ10;
+    public void setLblPorcInf01_Op01(Label lblPorcInf01_Op01) {
+        this.lblPorcInf01_Op01 = lblPorcInf01_Op01;
     }
 
-    public NumberAxis getyAxisLine_HZ10() {
-        return yAxisLine_HZ10;
+    public Label getLblInf02_Op01() {
+        return lblInf02_Op01;
     }
 
-    public void setyAxisLine_HZ10(NumberAxis yAxisLine_HZ10) {
-        this.yAxisLine_HZ10 = yAxisLine_HZ10;
+    public void setLblInf02_Op01(Label lblInf02_Op01) {
+        this.lblInf02_Op01 = lblInf02_Op01;
     }
 
-    public Label getLblInf01_R10() {
-        return lblInf01_R10;
+    public Label getLblVlrInf02_Op01() {
+        return lblVlrInf02_Op01;
     }
 
-    public void setLblInf01_R10(Label lblInf01_R10) {
-        this.lblInf01_R10 = lblInf01_R10;
+    public void setLblVlrInf02_Op01(Label lblVlrInf02_Op01) {
+        this.lblVlrInf02_Op01 = lblVlrInf02_Op01;
     }
 
-    public Label getLblVlrInf01_R10() {
-        return lblVlrInf01_R10;
+    public Label getLblPorcInf02_Op01() {
+        return lblPorcInf02_Op01;
     }
 
-    public void setLblVlrInf01_R10(Label lblVlrInf01_R10) {
-        this.lblVlrInf01_R10 = lblVlrInf01_R10;
+    public void setLblPorcInf02_Op01(Label lblPorcInf02_Op01) {
+        this.lblPorcInf02_Op01 = lblPorcInf02_Op01;
     }
 
-    public Label getLblPorcInf01_R10() {
-        return lblPorcInf01_R10;
+    public Label getLblTickUltimo_Op01() {
+        return lblTickUltimo_Op01;
     }
 
-    public void setLblPorcInf01_R10(Label lblPorcInf01_R10) {
-        this.lblPorcInf01_R10 = lblPorcInf01_R10;
+    public void setLblTickUltimo_Op01(Label lblTickUltimo_Op01) {
+        this.lblTickUltimo_Op01 = lblTickUltimo_Op01;
     }
 
-    public Label getLblInf02_R10() {
-        return lblInf02_R10;
+    public Label getLblLegendaTickUltimo_Op01() {
+        return lblLegendaTickUltimo_Op01;
     }
 
-    public void setLblInf02_R10(Label lblInf02_R10) {
-        this.lblInf02_R10 = lblInf02_R10;
+    public void setLblLegendaTickUltimo_Op01(Label lblLegendaTickUltimo_Op01) {
+        this.lblLegendaTickUltimo_Op01 = lblLegendaTickUltimo_Op01;
     }
 
-    public Label getLblVlrInf02_R10() {
-        return lblVlrInf02_R10;
+    public Button getBtnContratos_Op01() {
+        return btnContratos_Op01;
     }
 
-    public void setLblVlrInf02_R10(Label lblVlrInf02_R10) {
-        this.lblVlrInf02_R10 = lblVlrInf02_R10;
+    public void setBtnContratos_Op01(Button btnContratos_Op01) {
+        this.btnContratos_Op01 = btnContratos_Op01;
     }
 
-    public Label getLblPorcInf02_R10() {
-        return lblPorcInf02_R10;
+    public Button getBtnComprar_Op01() {
+        return btnComprar_Op01;
     }
 
-    public void setLblPorcInf02_R10(Label lblPorcInf02_R10) {
-        this.lblPorcInf02_R10 = lblPorcInf02_R10;
+    public void setBtnComprar_Op01(Button btnComprar_Op01) {
+        this.btnComprar_Op01 = btnComprar_Op01;
     }
 
-    public Label getLblTickUltimo_R10() {
-        return lblTickUltimo_R10;
+    public Button getBtnPausar_Op01() {
+        return btnPausar_Op01;
     }
 
-    public void setLblTickUltimo_R10(Label lblTickUltimo_R10) {
-        this.lblTickUltimo_R10 = lblTickUltimo_R10;
+    public void setBtnPausar_Op01(Button btnPausar_Op01) {
+        this.btnPausar_Op01 = btnPausar_Op01;
     }
 
-    public Label getLblLegendaTickUltimo_R10() {
-        return lblLegendaTickUltimo_R10;
+    public Button getBtnStop_Op01() {
+        return btnStop_Op01;
     }
 
-    public void setLblLegendaTickUltimo_R10(Label lblLegendaTickUltimo_R10) {
-        this.lblLegendaTickUltimo_R10 = lblLegendaTickUltimo_R10;
+    public void setBtnStop_Op01(Button btnStop_Op01) {
+        this.btnStop_Op01 = btnStop_Op01;
     }
 
-    public Button getBtnContratos_R10() {
-        return btnContratos_R10;
+    public Label getLblInvestido_Op01() {
+        return lblInvestido_Op01;
     }
 
-    public void setBtnContratos_R10(Button btnContratos_R10) {
-        this.btnContratos_R10 = btnContratos_R10;
+    public void setLblInvestido_Op01(Label lblInvestido_Op01) {
+        this.lblInvestido_Op01 = lblInvestido_Op01;
     }
 
-    public Button getBtnComprar_R10() {
-        return btnComprar_R10;
+    public Label getLblInvestidoPorc_Op01() {
+        return lblInvestidoPorc_Op01;
     }
 
-    public void setBtnComprar_R10(Button btnComprar_R10) {
-        this.btnComprar_R10 = btnComprar_R10;
+    public void setLblInvestidoPorc_Op01(Label lblInvestidoPorc_Op01) {
+        this.lblInvestidoPorc_Op01 = lblInvestidoPorc_Op01;
     }
 
-    public Button getBtnPausar_R10() {
-        return btnPausar_R10;
+    public Label getLblPremiacao_Op01() {
+        return lblPremiacao_Op01;
     }
 
-    public void setBtnPausar_R10(Button btnPausar_R10) {
-        this.btnPausar_R10 = btnPausar_R10;
+    public void setLblPremiacao_Op01(Label lblPremiacao_Op01) {
+        this.lblPremiacao_Op01 = lblPremiacao_Op01;
     }
 
-    public Button getBtnStop_R10() {
-        return btnStop_R10;
+    public Label getLblPremiacaoPorc_Op01() {
+        return lblPremiacaoPorc_Op01;
     }
 
-    public void setBtnStop_R10(Button btnStop_R10) {
-        this.btnStop_R10 = btnStop_R10;
+    public void setLblPremiacaoPorc_Op01(Label lblPremiacaoPorc_Op01) {
+        this.lblPremiacaoPorc_Op01 = lblPremiacaoPorc_Op01;
     }
 
-    public Label getLblInvestido_R10() {
-        return lblInvestido_R10;
+    public Label getLblLucro_Op01() {
+        return lblLucro_Op01;
     }
 
-    public void setLblInvestido_R10(Label lblInvestido_R10) {
-        this.lblInvestido_R10 = lblInvestido_R10;
+    public void setLblLucro_Op01(Label lblLucro_Op01) {
+        this.lblLucro_Op01 = lblLucro_Op01;
     }
 
-    public Label getLblInvestidoPorc_R10() {
-        return lblInvestidoPorc_R10;
+    public Label getLblLucroPorc_Op01() {
+        return lblLucroPorc_Op01;
     }
 
-    public void setLblInvestidoPorc_R10(Label lblInvestidoPorc_R10) {
-        this.lblInvestidoPorc_R10 = lblInvestidoPorc_R10;
+    public void setLblLucroPorc_Op01(Label lblLucroPorc_Op01) {
+        this.lblLucroPorc_Op01 = lblLucroPorc_Op01;
     }
 
-    public Label getLblPremiacao_R10() {
-        return lblPremiacao_R10;
+    public TableView<Transacoes> getTbvTransacoes_Op01() {
+        return tbvTransacoes_Op01;
     }
 
-    public void setLblPremiacao_R10(Label lblPremiacao_R10) {
-        this.lblPremiacao_R10 = lblPremiacao_R10;
+    public void setTbvTransacoes_Op01(TableView<Transacoes> tbvTransacoes_Op01) {
+        this.tbvTransacoes_Op01 = tbvTransacoes_Op01;
     }
 
-    public Label getLblPremiacaoPorc_R10() {
-        return lblPremiacaoPorc_R10;
+    public ComboBox<Symbol> getCboMercado01() {
+        return cboMercado01;
     }
 
-    public void setLblPremiacaoPorc_R10(Label lblPremiacaoPorc_R10) {
-        this.lblPremiacaoPorc_R10 = lblPremiacaoPorc_R10;
+    public void setCboMercado01(ComboBox<Symbol> cboMercado01) {
+        this.cboMercado01 = cboMercado01;
     }
 
-    public Label getLblLucro_R10() {
-        return lblLucro_R10;
+    public CheckBox getChkAtivo_Op01() {
+        return chkAtivo_Op01;
     }
 
-    public void setLblLucro_R10(Label lblLucro_R10) {
-        this.lblLucro_R10 = lblLucro_R10;
+    public void setChkAtivo_Op01(CheckBox chkAtivo_Op01) {
+        this.chkAtivo_Op01 = chkAtivo_Op01;
     }
 
-    public Label getLblLucroPorc_R10() {
-        return lblLucroPorc_R10;
+    public Label getTpnLblLegendaExecucoes_Op01() {
+        return tpnLblLegendaExecucoes_Op01;
     }
 
-    public void setLblLucroPorc_R10(Label lblLucroPorc_R10) {
-        this.lblLucroPorc_R10 = lblLucroPorc_R10;
+    public void setTpnLblLegendaExecucoes_Op01(Label tpnLblLegendaExecucoes_Op01) {
+        this.tpnLblLegendaExecucoes_Op01 = tpnLblLegendaExecucoes_Op01;
     }
 
-    public TableView<Transacoes> getTbvTransacoes_R10() {
-        return tbvTransacoes_R10;
+    public Label getTpnLblExecucoes_Op01() {
+        return tpnLblExecucoes_Op01;
     }
 
-    public void setTbvTransacoes_R10(TableView<Transacoes> tbvTransacoes_R10) {
-        this.tbvTransacoes_R10 = tbvTransacoes_R10;
+    public void setTpnLblExecucoes_Op01(Label tpnLblExecucoes_Op01) {
+        this.tpnLblExecucoes_Op01 = tpnLblExecucoes_Op01;
     }
 
-    public CheckBox getChkAtivo_R10() {
-        return chkAtivo_R10;
+    public Label getTpnLblVitorias_Op01() {
+        return tpnLblVitorias_Op01;
     }
 
-    public void setChkAtivo_R10(CheckBox chkAtivo_R10) {
-        this.chkAtivo_R10 = chkAtivo_R10;
+    public void setTpnLblVitorias_Op01(Label tpnLblVitorias_Op01) {
+        this.tpnLblVitorias_Op01 = tpnLblVitorias_Op01;
     }
 
-    public Label getTpnLblLegendaExecucoes_R10() {
-        return tpnLblLegendaExecucoes_R10;
+    public Label getTpnLblDerrotas_Op01() {
+        return tpnLblDerrotas_Op01;
     }
 
-    public void setTpnLblLegendaExecucoes_R10(Label tpnLblLegendaExecucoes_R10) {
-        this.tpnLblLegendaExecucoes_R10 = tpnLblLegendaExecucoes_R10;
+    public void setTpnLblDerrotas_Op01(Label tpnLblDerrotas_Op01) {
+        this.tpnLblDerrotas_Op01 = tpnLblDerrotas_Op01;
     }
 
-    public Label getTpnLblExecucoes_R10() {
-        return tpnLblExecucoes_R10;
+    public Label getTpnLblLucro_Op01() {
+        return tpnLblLucro_Op01;
     }
 
-    public void setTpnLblExecucoes_R10(Label tpnLblExecucoes_R10) {
-        this.tpnLblExecucoes_R10 = tpnLblExecucoes_R10;
+    public void setTpnLblLucro_Op01(Label tpnLblLucro_Op01) {
+        this.tpnLblLucro_Op01 = tpnLblLucro_Op01;
     }
 
-    public Label getTpnLblVitorias_R10() {
-        return tpnLblVitorias_R10;
+    public TitledPane getTpn_Op02() {
+        return tpn_Op02;
     }
 
-    public void setTpnLblVitorias_R10(Label tpnLblVitorias_R10) {
-        this.tpnLblVitorias_R10 = tpnLblVitorias_R10;
+    public void setTpn_Op02(TitledPane tpn_Op02) {
+        this.tpn_Op02 = tpn_Op02;
     }
 
-    public Label getTpnLblDerrotas_R10() {
-        return tpnLblDerrotas_R10;
+    public BarChart<String, Number> getGraficoBarras_Op02() {
+        return graficoBarras_Op02;
     }
 
-    public void setTpnLblDerrotas_R10(Label tpnLblDerrotas_R10) {
-        this.tpnLblDerrotas_R10 = tpnLblDerrotas_R10;
+    public void setGraficoBarras_Op02(BarChart<String, Number> graficoBarras_Op02) {
+        this.graficoBarras_Op02 = graficoBarras_Op02;
     }
 
-    public Label getTpnLblLucro_R10() {
-        return tpnLblLucro_R10;
+    public NumberAxis getyAxisBarras_Op02() {
+        return yAxisBarras_Op02;
     }
 
-    public void setTpnLblLucro_R10(Label tpnLblLucro_R10) {
-        this.tpnLblLucro_R10 = tpnLblLucro_R10;
+    public void setyAxisBarras_Op02(NumberAxis yAxisBarras_Op02) {
+        this.yAxisBarras_Op02 = yAxisBarras_Op02;
     }
 
-    public TitledPane getTpn_R25() {
-        return tpn_R25;
+    public LineChart getGraficoLinhas_Op02() {
+        return graficoLinhas_Op02;
     }
 
-    public void setTpn_R25(TitledPane tpn_R25) {
-        this.tpn_R25 = tpn_R25;
+    public void setGraficoLinhas_Op02(LineChart graficoLinhas_Op02) {
+        this.graficoLinhas_Op02 = graficoLinhas_Op02;
     }
 
-    public BarChart<String, Number> getGrafBar_R25() {
-        return grafBar_R25;
+    public NumberAxis getyAxisLinhas_Op02() {
+        return yAxisLinhas_Op02;
     }
 
-    public void setGrafBar_R25(BarChart<String, Number> grafBar_R25) {
-        this.grafBar_R25 = grafBar_R25;
+    public void setyAxisLinhas_Op02(NumberAxis yAxisLinhas_Op02) {
+        this.yAxisLinhas_Op02 = yAxisLinhas_Op02;
     }
 
-    public NumberAxis getyAxisBar_R25() {
-        return yAxisBar_R25;
+    public Label getLblInf01_Op02() {
+        return lblInf01_Op02;
     }
 
-    public void setyAxisBar_R25(NumberAxis yAxisBar_R25) {
-        this.yAxisBar_R25 = yAxisBar_R25;
+    public void setLblInf01_Op02(Label lblInf01_Op02) {
+        this.lblInf01_Op02 = lblInf01_Op02;
     }
 
-    public BarChart<String, Number> getGrafBar_HZ25() {
-        return grafBar_HZ25;
+    public Label getLblVlrInf01_Op02() {
+        return lblVlrInf01_Op02;
     }
 
-    public void setGrafBar_HZ25(BarChart<String, Number> grafBar_HZ25) {
-        this.grafBar_HZ25 = grafBar_HZ25;
+    public void setLblVlrInf01_Op02(Label lblVlrInf01_Op02) {
+        this.lblVlrInf01_Op02 = lblVlrInf01_Op02;
     }
 
-    public NumberAxis getyAxisBar_HZ25() {
-        return yAxisBar_HZ25;
+    public Label getLblPorcInf01_Op02() {
+        return lblPorcInf01_Op02;
     }
 
-    public void setyAxisBar_HZ25(NumberAxis yAxisBar_HZ25) {
-        this.yAxisBar_HZ25 = yAxisBar_HZ25;
+    public void setLblPorcInf01_Op02(Label lblPorcInf01_Op02) {
+        this.lblPorcInf01_Op02 = lblPorcInf01_Op02;
     }
 
-    public LineChart getGrafLine_R25() {
-        return grafLine_R25;
+    public Label getLblInf02_Op02() {
+        return lblInf02_Op02;
     }
 
-    public void setGrafLine_R25(LineChart grafLine_R25) {
-        this.grafLine_R25 = grafLine_R25;
+    public void setLblInf02_Op02(Label lblInf02_Op02) {
+        this.lblInf02_Op02 = lblInf02_Op02;
     }
 
-    public NumberAxis getyAxisLine_R25() {
-        return yAxisLine_R25;
+    public Label getLblVlrInf02_Op02() {
+        return lblVlrInf02_Op02;
     }
 
-    public void setyAxisLine_R25(NumberAxis yAxisLine_R25) {
-        this.yAxisLine_R25 = yAxisLine_R25;
+    public void setLblVlrInf02_Op02(Label lblVlrInf02_Op02) {
+        this.lblVlrInf02_Op02 = lblVlrInf02_Op02;
     }
 
-    public LineChart getGrafLine_HZ25() {
-        return grafLine_HZ25;
+    public Label getLblPorcInf02_Op02() {
+        return lblPorcInf02_Op02;
     }
 
-    public void setGrafLine_HZ25(LineChart grafLine_HZ25) {
-        this.grafLine_HZ25 = grafLine_HZ25;
+    public void setLblPorcInf02_Op02(Label lblPorcInf02_Op02) {
+        this.lblPorcInf02_Op02 = lblPorcInf02_Op02;
     }
 
-    public NumberAxis getyAxisLine_HZ25() {
-        return yAxisLine_HZ25;
+    public Label getLblTickUltimo_Op02() {
+        return lblTickUltimo_Op02;
     }
 
-    public void setyAxisLine_HZ25(NumberAxis yAxisLine_HZ25) {
-        this.yAxisLine_HZ25 = yAxisLine_HZ25;
+    public void setLblTickUltimo_Op02(Label lblTickUltimo_Op02) {
+        this.lblTickUltimo_Op02 = lblTickUltimo_Op02;
     }
 
-    public Label getLblInf01_R25() {
-        return lblInf01_R25;
+    public Label getLblLegendaTickUltimo_Op02() {
+        return lblLegendaTickUltimo_Op02;
     }
 
-    public void setLblInf01_R25(Label lblInf01_R25) {
-        this.lblInf01_R25 = lblInf01_R25;
+    public void setLblLegendaTickUltimo_Op02(Label lblLegendaTickUltimo_Op02) {
+        this.lblLegendaTickUltimo_Op02 = lblLegendaTickUltimo_Op02;
     }
 
-    public Label getLblVlrInf01_R25() {
-        return lblVlrInf01_R25;
+    public Button getBtnContratos_Op02() {
+        return btnContratos_Op02;
     }
 
-    public void setLblVlrInf01_R25(Label lblVlrInf01_R25) {
-        this.lblVlrInf01_R25 = lblVlrInf01_R25;
+    public void setBtnContratos_Op02(Button btnContratos_Op02) {
+        this.btnContratos_Op02 = btnContratos_Op02;
     }
 
-    public Label getLblPorcInf01_R25() {
-        return lblPorcInf01_R25;
+    public Button getBtnComprar_Op02() {
+        return btnComprar_Op02;
     }
 
-    public void setLblPorcInf01_R25(Label lblPorcInf01_R25) {
-        this.lblPorcInf01_R25 = lblPorcInf01_R25;
+    public void setBtnComprar_Op02(Button btnComprar_Op02) {
+        this.btnComprar_Op02 = btnComprar_Op02;
     }
 
-    public Label getLblInf02_R25() {
-        return lblInf02_R25;
+    public Button getBtnPausar_Op02() {
+        return btnPausar_Op02;
     }
 
-    public void setLblInf02_R25(Label lblInf02_R25) {
-        this.lblInf02_R25 = lblInf02_R25;
+    public void setBtnPausar_Op02(Button btnPausar_Op02) {
+        this.btnPausar_Op02 = btnPausar_Op02;
     }
 
-    public Label getLblVlrInf02_R25() {
-        return lblVlrInf02_R25;
+    public Button getBtnStop_Op02() {
+        return btnStop_Op02;
     }
 
-    public void setLblVlrInf02_R25(Label lblVlrInf02_R25) {
-        this.lblVlrInf02_R25 = lblVlrInf02_R25;
+    public void setBtnStop_Op02(Button btnStop_Op02) {
+        this.btnStop_Op02 = btnStop_Op02;
     }
 
-    public Label getLblPorcInf02_R25() {
-        return lblPorcInf02_R25;
+    public Label getLblInvestido_Op02() {
+        return lblInvestido_Op02;
     }
 
-    public void setLblPorcInf02_R25(Label lblPorcInf02_R25) {
-        this.lblPorcInf02_R25 = lblPorcInf02_R25;
+    public void setLblInvestido_Op02(Label lblInvestido_Op02) {
+        this.lblInvestido_Op02 = lblInvestido_Op02;
     }
 
-    public Label getLblTickUltimo_R25() {
-        return lblTickUltimo_R25;
+    public Label getLblInvestidoPorc_Op02() {
+        return lblInvestidoPorc_Op02;
     }
 
-    public void setLblTickUltimo_R25(Label lblTickUltimo_R25) {
-        this.lblTickUltimo_R25 = lblTickUltimo_R25;
+    public void setLblInvestidoPorc_Op02(Label lblInvestidoPorc_Op02) {
+        this.lblInvestidoPorc_Op02 = lblInvestidoPorc_Op02;
     }
 
-    public Label getLblLegendaTickUltimo_R25() {
-        return lblLegendaTickUltimo_R25;
+    public Label getLblPremiacao_Op02() {
+        return lblPremiacao_Op02;
     }
 
-    public void setLblLegendaTickUltimo_R25(Label lblLegendaTickUltimo_R25) {
-        this.lblLegendaTickUltimo_R25 = lblLegendaTickUltimo_R25;
+    public void setLblPremiacao_Op02(Label lblPremiacao_Op02) {
+        this.lblPremiacao_Op02 = lblPremiacao_Op02;
     }
 
-    public Button getBtnContratos_R25() {
-        return btnContratos_R25;
+    public Label getLblPremiacaoPorc_Op02() {
+        return lblPremiacaoPorc_Op02;
     }
 
-    public void setBtnContratos_R25(Button btnContratos_R25) {
-        this.btnContratos_R25 = btnContratos_R25;
+    public void setLblPremiacaoPorc_Op02(Label lblPremiacaoPorc_Op02) {
+        this.lblPremiacaoPorc_Op02 = lblPremiacaoPorc_Op02;
     }
 
-    public Button getBtnComprar_R25() {
-        return btnComprar_R25;
+    public Label getLblLucro_Op02() {
+        return lblLucro_Op02;
     }
 
-    public void setBtnComprar_R25(Button btnComprar_R25) {
-        this.btnComprar_R25 = btnComprar_R25;
+    public void setLblLucro_Op02(Label lblLucro_Op02) {
+        this.lblLucro_Op02 = lblLucro_Op02;
     }
 
-    public Button getBtnPausar_R25() {
-        return btnPausar_R25;
+    public Label getLblLucroPorc_Op02() {
+        return lblLucroPorc_Op02;
     }
 
-    public void setBtnPausar_R25(Button btnPausar_R25) {
-        this.btnPausar_R25 = btnPausar_R25;
+    public void setLblLucroPorc_Op02(Label lblLucroPorc_Op02) {
+        this.lblLucroPorc_Op02 = lblLucroPorc_Op02;
     }
 
-    public Button getBtnStop_R25() {
-        return btnStop_R25;
+    public TableView<Transacoes> getTbvTransacoes_Op02() {
+        return tbvTransacoes_Op02;
     }
 
-    public void setBtnStop_R25(Button btnStop_R25) {
-        this.btnStop_R25 = btnStop_R25;
+    public void setTbvTransacoes_Op02(TableView<Transacoes> tbvTransacoes_Op02) {
+        this.tbvTransacoes_Op02 = tbvTransacoes_Op02;
     }
 
-    public Label getLblInvestido_R25() {
-        return lblInvestido_R25;
+    public ComboBox<Symbol> getCboMercado02() {
+        return cboMercado02;
     }
 
-    public void setLblInvestido_R25(Label lblInvestido_R25) {
-        this.lblInvestido_R25 = lblInvestido_R25;
+    public void setCboMercado02(ComboBox<Symbol> cboMercado02) {
+        this.cboMercado02 = cboMercado02;
     }
 
-    public Label getLblInvestidoPorc_R25() {
-        return lblInvestidoPorc_R25;
+    public CheckBox getChkAtivo_Op02() {
+        return chkAtivo_Op02;
     }
 
-    public void setLblInvestidoPorc_R25(Label lblInvestidoPorc_R25) {
-        this.lblInvestidoPorc_R25 = lblInvestidoPorc_R25;
+    public void setChkAtivo_Op02(CheckBox chkAtivo_Op02) {
+        this.chkAtivo_Op02 = chkAtivo_Op02;
     }
 
-    public Label getLblPremiacao_R25() {
-        return lblPremiacao_R25;
+    public Label getTpnLblLegendaExecucoes_Op02() {
+        return tpnLblLegendaExecucoes_Op02;
     }
 
-    public void setLblPremiacao_R25(Label lblPremiacao_R25) {
-        this.lblPremiacao_R25 = lblPremiacao_R25;
+    public void setTpnLblLegendaExecucoes_Op02(Label tpnLblLegendaExecucoes_Op02) {
+        this.tpnLblLegendaExecucoes_Op02 = tpnLblLegendaExecucoes_Op02;
     }
 
-    public Label getLblPremiacaoPorc_R25() {
-        return lblPremiacaoPorc_R25;
+    public Label getTpnLblExecucoes_Op02() {
+        return tpnLblExecucoes_Op02;
     }
 
-    public void setLblPremiacaoPorc_R25(Label lblPremiacaoPorc_R25) {
-        this.lblPremiacaoPorc_R25 = lblPremiacaoPorc_R25;
+    public void setTpnLblExecucoes_Op02(Label tpnLblExecucoes_Op02) {
+        this.tpnLblExecucoes_Op02 = tpnLblExecucoes_Op02;
     }
 
-    public Label getLblLucro_R25() {
-        return lblLucro_R25;
+    public Label getTpnLblVitorias_Op02() {
+        return tpnLblVitorias_Op02;
     }
 
-    public void setLblLucro_R25(Label lblLucro_R25) {
-        this.lblLucro_R25 = lblLucro_R25;
+    public void setTpnLblVitorias_Op02(Label tpnLblVitorias_Op02) {
+        this.tpnLblVitorias_Op02 = tpnLblVitorias_Op02;
     }
 
-    public Label getLblLucroPorc_R25() {
-        return lblLucroPorc_R25;
+    public Label getTpnLblDerrotas_Op02() {
+        return tpnLblDerrotas_Op02;
     }
 
-    public void setLblLucroPorc_R25(Label lblLucroPorc_R25) {
-        this.lblLucroPorc_R25 = lblLucroPorc_R25;
+    public void setTpnLblDerrotas_Op02(Label tpnLblDerrotas_Op02) {
+        this.tpnLblDerrotas_Op02 = tpnLblDerrotas_Op02;
     }
 
-    public TableView<Transacoes> getTbvTransacoes_R25() {
-        return tbvTransacoes_R25;
+    public Label getTpnLblLucro_Op02() {
+        return tpnLblLucro_Op02;
     }
 
-    public void setTbvTransacoes_R25(TableView<Transacoes> tbvTransacoes_R25) {
-        this.tbvTransacoes_R25 = tbvTransacoes_R25;
+    public void setTpnLblLucro_Op02(Label tpnLblLucro_Op02) {
+        this.tpnLblLucro_Op02 = tpnLblLucro_Op02;
     }
 
-    public CheckBox getChkAtivo_R25() {
-        return chkAtivo_R25;
+    public TitledPane getTpn_Op03() {
+        return tpn_Op03;
     }
 
-    public void setChkAtivo_R25(CheckBox chkAtivo_R25) {
-        this.chkAtivo_R25 = chkAtivo_R25;
+    public void setTpn_Op03(TitledPane tpn_Op03) {
+        this.tpn_Op03 = tpn_Op03;
     }
 
-    public Label getTpnLblLegendaExecucoes_R25() {
-        return tpnLblLegendaExecucoes_R25;
+    public BarChart<String, Number> getGraficoBarras_Op03() {
+        return graficoBarras_Op03;
     }
 
-    public void setTpnLblLegendaExecucoes_R25(Label tpnLblLegendaExecucoes_R25) {
-        this.tpnLblLegendaExecucoes_R25 = tpnLblLegendaExecucoes_R25;
+    public void setGraficoBarras_Op03(BarChart<String, Number> graficoBarras_Op03) {
+        this.graficoBarras_Op03 = graficoBarras_Op03;
     }
 
-    public Label getTpnLblExecucoes_R25() {
-        return tpnLblExecucoes_R25;
+    public NumberAxis getyAxisBarras_Op03() {
+        return yAxisBarras_Op03;
     }
 
-    public void setTpnLblExecucoes_R25(Label tpnLblExecucoes_R25) {
-        this.tpnLblExecucoes_R25 = tpnLblExecucoes_R25;
+    public void setyAxisBarras_Op03(NumberAxis yAxisBarras_Op03) {
+        this.yAxisBarras_Op03 = yAxisBarras_Op03;
     }
 
-    public Label getTpnLblVitorias_R25() {
-        return tpnLblVitorias_R25;
+    public LineChart getGraficoLinhas_Op03() {
+        return graficoLinhas_Op03;
     }
 
-    public void setTpnLblVitorias_R25(Label tpnLblVitorias_R25) {
-        this.tpnLblVitorias_R25 = tpnLblVitorias_R25;
+    public void setGraficoLinhas_Op03(LineChart graficoLinhas_Op03) {
+        this.graficoLinhas_Op03 = graficoLinhas_Op03;
     }
 
-    public Label getTpnLblDerrotas_R25() {
-        return tpnLblDerrotas_R25;
+    public NumberAxis getyAxisLinhas_Op03() {
+        return yAxisLinhas_Op03;
     }
 
-    public void setTpnLblDerrotas_R25(Label tpnLblDerrotas_R25) {
-        this.tpnLblDerrotas_R25 = tpnLblDerrotas_R25;
+    public void setyAxisLinhas_Op03(NumberAxis yAxisLinhas_Op03) {
+        this.yAxisLinhas_Op03 = yAxisLinhas_Op03;
     }
 
-    public Label getTpnLblLucro_R25() {
-        return tpnLblLucro_R25;
+    public Label getLblInf01_Op03() {
+        return lblInf01_Op03;
     }
 
-    public void setTpnLblLucro_R25(Label tpnLblLucro_R25) {
-        this.tpnLblLucro_R25 = tpnLblLucro_R25;
+    public void setLblInf01_Op03(Label lblInf01_Op03) {
+        this.lblInf01_Op03 = lblInf01_Op03;
     }
 
-    public TitledPane getTpn_R50() {
-        return tpn_R50;
+    public Label getLblVlrInf01_Op03() {
+        return lblVlrInf01_Op03;
     }
 
-    public void setTpn_R50(TitledPane tpn_R50) {
-        this.tpn_R50 = tpn_R50;
+    public void setLblVlrInf01_Op03(Label lblVlrInf01_Op03) {
+        this.lblVlrInf01_Op03 = lblVlrInf01_Op03;
     }
 
-    public BarChart<String, Number> getGrafBar_R50() {
-        return grafBar_R50;
+    public Label getLblPorcInf01_Op03() {
+        return lblPorcInf01_Op03;
     }
 
-    public void setGrafBar_R50(BarChart<String, Number> grafBar_R50) {
-        this.grafBar_R50 = grafBar_R50;
+    public void setLblPorcInf01_Op03(Label lblPorcInf01_Op03) {
+        this.lblPorcInf01_Op03 = lblPorcInf01_Op03;
     }
 
-    public NumberAxis getyAxisBar_R50() {
-        return yAxisBar_R50;
+    public Label getLblInf02_Op03() {
+        return lblInf02_Op03;
     }
 
-    public void setyAxisBar_R50(NumberAxis yAxisBar_R50) {
-        this.yAxisBar_R50 = yAxisBar_R50;
+    public void setLblInf02_Op03(Label lblInf02_Op03) {
+        this.lblInf02_Op03 = lblInf02_Op03;
     }
 
-    public BarChart<String, Number> getGrafBar_HZ50() {
-        return grafBar_HZ50;
+    public Label getLblVlrInf02_Op03() {
+        return lblVlrInf02_Op03;
     }
 
-    public void setGrafBar_HZ50(BarChart<String, Number> grafBar_HZ50) {
-        this.grafBar_HZ50 = grafBar_HZ50;
+    public void setLblVlrInf02_Op03(Label lblVlrInf02_Op03) {
+        this.lblVlrInf02_Op03 = lblVlrInf02_Op03;
     }
 
-    public NumberAxis getyAxisBar_HZ50() {
-        return yAxisBar_HZ50;
+    public Label getLblPorcInf02_Op03() {
+        return lblPorcInf02_Op03;
     }
 
-    public void setyAxisBar_HZ50(NumberAxis yAxisBar_HZ50) {
-        this.yAxisBar_HZ50 = yAxisBar_HZ50;
+    public void setLblPorcInf02_Op03(Label lblPorcInf02_Op03) {
+        this.lblPorcInf02_Op03 = lblPorcInf02_Op03;
     }
 
-    public LineChart getGrafLine_R50() {
-        return grafLine_R50;
+    public Label getLblTickUltimo_Op03() {
+        return lblTickUltimo_Op03;
     }
 
-    public void setGrafLine_R50(LineChart grafLine_R50) {
-        this.grafLine_R50 = grafLine_R50;
+    public void setLblTickUltimo_Op03(Label lblTickUltimo_Op03) {
+        this.lblTickUltimo_Op03 = lblTickUltimo_Op03;
     }
 
-    public NumberAxis getyAxisLine_R50() {
-        return yAxisLine_R50;
+    public Label getLblLegendaTickUltimo_Op03() {
+        return lblLegendaTickUltimo_Op03;
     }
 
-    public void setyAxisLine_R50(NumberAxis yAxisLine_R50) {
-        this.yAxisLine_R50 = yAxisLine_R50;
+    public void setLblLegendaTickUltimo_Op03(Label lblLegendaTickUltimo_Op03) {
+        this.lblLegendaTickUltimo_Op03 = lblLegendaTickUltimo_Op03;
     }
 
-    public LineChart getGrafLine_HZ50() {
-        return grafLine_HZ50;
+    public Button getBtnContratos_Op03() {
+        return btnContratos_Op03;
     }
 
-    public void setGrafLine_HZ50(LineChart grafLine_HZ50) {
-        this.grafLine_HZ50 = grafLine_HZ50;
+    public void setBtnContratos_Op03(Button btnContratos_Op03) {
+        this.btnContratos_Op03 = btnContratos_Op03;
     }
 
-    public NumberAxis getyAxisLine_HZ50() {
-        return yAxisLine_HZ50;
+    public Button getBtnComprar_Op03() {
+        return btnComprar_Op03;
     }
 
-    public void setyAxisLine_HZ50(NumberAxis yAxisLine_HZ50) {
-        this.yAxisLine_HZ50 = yAxisLine_HZ50;
+    public void setBtnComprar_Op03(Button btnComprar_Op03) {
+        this.btnComprar_Op03 = btnComprar_Op03;
     }
 
-    public Label getLblInf01_R50() {
-        return lblInf01_R50;
+    public Button getBtnPausar_Op03() {
+        return btnPausar_Op03;
     }
 
-    public void setLblInf01_R50(Label lblInf01_R50) {
-        this.lblInf01_R50 = lblInf01_R50;
+    public void setBtnPausar_Op03(Button btnPausar_Op03) {
+        this.btnPausar_Op03 = btnPausar_Op03;
     }
 
-    public Label getLblVlrInf01_R50() {
-        return lblVlrInf01_R50;
+    public Button getBtnStop_Op03() {
+        return btnStop_Op03;
     }
 
-    public void setLblVlrInf01_R50(Label lblVlrInf01_R50) {
-        this.lblVlrInf01_R50 = lblVlrInf01_R50;
+    public void setBtnStop_Op03(Button btnStop_Op03) {
+        this.btnStop_Op03 = btnStop_Op03;
     }
 
-    public Label getLblPorcInf01_R50() {
-        return lblPorcInf01_R50;
+    public Label getLblInvestido_Op03() {
+        return lblInvestido_Op03;
     }
 
-    public void setLblPorcInf01_R50(Label lblPorcInf01_R50) {
-        this.lblPorcInf01_R50 = lblPorcInf01_R50;
+    public void setLblInvestido_Op03(Label lblInvestido_Op03) {
+        this.lblInvestido_Op03 = lblInvestido_Op03;
     }
 
-    public Label getLblInf02_R50() {
-        return lblInf02_R50;
+    public Label getLblInvestidoPorc_Op03() {
+        return lblInvestidoPorc_Op03;
     }
 
-    public void setLblInf02_R50(Label lblInf02_R50) {
-        this.lblInf02_R50 = lblInf02_R50;
+    public void setLblInvestidoPorc_Op03(Label lblInvestidoPorc_Op03) {
+        this.lblInvestidoPorc_Op03 = lblInvestidoPorc_Op03;
     }
 
-    public Label getLblVlrInf02_R50() {
-        return lblVlrInf02_R50;
+    public Label getLblPremiacao_Op03() {
+        return lblPremiacao_Op03;
     }
 
-    public void setLblVlrInf02_R50(Label lblVlrInf02_R50) {
-        this.lblVlrInf02_R50 = lblVlrInf02_R50;
+    public void setLblPremiacao_Op03(Label lblPremiacao_Op03) {
+        this.lblPremiacao_Op03 = lblPremiacao_Op03;
     }
 
-    public Label getLblPorcInf02_R50() {
-        return lblPorcInf02_R50;
+    public Label getLblPremiacaoPorc_Op03() {
+        return lblPremiacaoPorc_Op03;
     }
 
-    public void setLblPorcInf02_R50(Label lblPorcInf02_R50) {
-        this.lblPorcInf02_R50 = lblPorcInf02_R50;
+    public void setLblPremiacaoPorc_Op03(Label lblPremiacaoPorc_Op03) {
+        this.lblPremiacaoPorc_Op03 = lblPremiacaoPorc_Op03;
     }
 
-    public Label getLblTickUltimo_R50() {
-        return lblTickUltimo_R50;
+    public Label getLblLucro_Op03() {
+        return lblLucro_Op03;
     }
 
-    public void setLblTickUltimo_R50(Label lblTickUltimo_R50) {
-        this.lblTickUltimo_R50 = lblTickUltimo_R50;
+    public void setLblLucro_Op03(Label lblLucro_Op03) {
+        this.lblLucro_Op03 = lblLucro_Op03;
     }
 
-    public Label getLblLegendaTickUltimo_R50() {
-        return lblLegendaTickUltimo_R50;
+    public Label getLblLucroPorc_Op03() {
+        return lblLucroPorc_Op03;
     }
 
-    public void setLblLegendaTickUltimo_R50(Label lblLegendaTickUltimo_R50) {
-        this.lblLegendaTickUltimo_R50 = lblLegendaTickUltimo_R50;
+    public void setLblLucroPorc_Op03(Label lblLucroPorc_Op03) {
+        this.lblLucroPorc_Op03 = lblLucroPorc_Op03;
     }
 
-    public Button getBtnContratos_R50() {
-        return btnContratos_R50;
+    public TableView<Transacoes> getTbvTransacoes_Op03() {
+        return tbvTransacoes_Op03;
     }
 
-    public void setBtnContratos_R50(Button btnContratos_R50) {
-        this.btnContratos_R50 = btnContratos_R50;
+    public void setTbvTransacoes_Op03(TableView<Transacoes> tbvTransacoes_Op03) {
+        this.tbvTransacoes_Op03 = tbvTransacoes_Op03;
     }
 
-    public Button getBtnComprar_R50() {
-        return btnComprar_R50;
+    public ComboBox<Symbol> getCboMercado03() {
+        return cboMercado03;
     }
 
-    public void setBtnComprar_R50(Button btnComprar_R50) {
-        this.btnComprar_R50 = btnComprar_R50;
+    public void setCboMercado03(ComboBox<Symbol> cboMercado03) {
+        this.cboMercado03 = cboMercado03;
     }
 
-    public Button getBtnPausar_R50() {
-        return btnPausar_R50;
+    public CheckBox getChkAtivo_Op03() {
+        return chkAtivo_Op03;
     }
 
-    public void setBtnPausar_R50(Button btnPausar_R50) {
-        this.btnPausar_R50 = btnPausar_R50;
+    public void setChkAtivo_Op03(CheckBox chkAtivo_Op03) {
+        this.chkAtivo_Op03 = chkAtivo_Op03;
     }
 
-    public Button getBtnStop_R50() {
-        return btnStop_R50;
+    public Label getTpnLblLegendaExecucoes_Op03() {
+        return tpnLblLegendaExecucoes_Op03;
     }
 
-    public void setBtnStop_R50(Button btnStop_R50) {
-        this.btnStop_R50 = btnStop_R50;
+    public void setTpnLblLegendaExecucoes_Op03(Label tpnLblLegendaExecucoes_Op03) {
+        this.tpnLblLegendaExecucoes_Op03 = tpnLblLegendaExecucoes_Op03;
     }
 
-    public Label getLblInvestido_R50() {
-        return lblInvestido_R50;
+    public Label getTpnLblExecucoes_Op03() {
+        return tpnLblExecucoes_Op03;
     }
 
-    public void setLblInvestido_R50(Label lblInvestido_R50) {
-        this.lblInvestido_R50 = lblInvestido_R50;
+    public void setTpnLblExecucoes_Op03(Label tpnLblExecucoes_Op03) {
+        this.tpnLblExecucoes_Op03 = tpnLblExecucoes_Op03;
     }
 
-    public Label getLblInvestidoPorc_R50() {
-        return lblInvestidoPorc_R50;
+    public Label getTpnLblVitorias_Op03() {
+        return tpnLblVitorias_Op03;
     }
 
-    public void setLblInvestidoPorc_R50(Label lblInvestidoPorc_R50) {
-        this.lblInvestidoPorc_R50 = lblInvestidoPorc_R50;
+    public void setTpnLblVitorias_Op03(Label tpnLblVitorias_Op03) {
+        this.tpnLblVitorias_Op03 = tpnLblVitorias_Op03;
     }
 
-    public Label getLblPremiacao_R50() {
-        return lblPremiacao_R50;
+    public Label getTpnLblDerrotas_Op03() {
+        return tpnLblDerrotas_Op03;
     }
 
-    public void setLblPremiacao_R50(Label lblPremiacao_R50) {
-        this.lblPremiacao_R50 = lblPremiacao_R50;
+    public void setTpnLblDerrotas_Op03(Label tpnLblDerrotas_Op03) {
+        this.tpnLblDerrotas_Op03 = tpnLblDerrotas_Op03;
     }
 
-    public Label getLblPremiacaoPorc_R50() {
-        return lblPremiacaoPorc_R50;
+    public Label getTpnLblLucro_Op03() {
+        return tpnLblLucro_Op03;
     }
 
-    public void setLblPremiacaoPorc_R50(Label lblPremiacaoPorc_R50) {
-        this.lblPremiacaoPorc_R50 = lblPremiacaoPorc_R50;
+    public void setTpnLblLucro_Op03(Label tpnLblLucro_Op03) {
+        this.tpnLblLucro_Op03 = tpnLblLucro_Op03;
     }
 
-    public Label getLblLucro_R50() {
-        return lblLucro_R50;
+    public TitledPane getTpn_Op04() {
+        return tpn_Op04;
     }
 
-    public void setLblLucro_R50(Label lblLucro_R50) {
-        this.lblLucro_R50 = lblLucro_R50;
+    public void setTpn_Op04(TitledPane tpn_Op04) {
+        this.tpn_Op04 = tpn_Op04;
     }
 
-    public Label getLblLucroPorc_R50() {
-        return lblLucroPorc_R50;
+    public BarChart<String, Number> getGraficoBarras_Op04() {
+        return graficoBarras_Op04;
     }
 
-    public void setLblLucroPorc_R50(Label lblLucroPorc_R50) {
-        this.lblLucroPorc_R50 = lblLucroPorc_R50;
+    public void setGraficoBarras_Op04(BarChart<String, Number> graficoBarras_Op04) {
+        this.graficoBarras_Op04 = graficoBarras_Op04;
     }
 
-    public TableView<Transacoes> getTbvTransacoes_R50() {
-        return tbvTransacoes_R50;
+    public NumberAxis getyAxisBarras_Op04() {
+        return yAxisBarras_Op04;
     }
 
-    public void setTbvTransacoes_R50(TableView<Transacoes> tbvTransacoes_R50) {
-        this.tbvTransacoes_R50 = tbvTransacoes_R50;
+    public void setyAxisBarras_Op04(NumberAxis yAxisBarras_Op04) {
+        this.yAxisBarras_Op04 = yAxisBarras_Op04;
     }
 
-    public CheckBox getChkAtivo_R50() {
-        return chkAtivo_R50;
+    public LineChart getGraficoLinhas_Op04() {
+        return graficoLinhas_Op04;
     }
 
-    public void setChkAtivo_R50(CheckBox chkAtivo_R50) {
-        this.chkAtivo_R50 = chkAtivo_R50;
+    public void setGraficoLinhas_Op04(LineChart graficoLinhas_Op04) {
+        this.graficoLinhas_Op04 = graficoLinhas_Op04;
     }
 
-    public Label getTpnLblLegendaExecucoes_R50() {
-        return tpnLblLegendaExecucoes_R50;
+    public NumberAxis getyAxisLinhas_Op04() {
+        return yAxisLinhas_Op04;
     }
 
-    public void setTpnLblLegendaExecucoes_R50(Label tpnLblLegendaExecucoes_R50) {
-        this.tpnLblLegendaExecucoes_R50 = tpnLblLegendaExecucoes_R50;
+    public void setyAxisLinhas_Op04(NumberAxis yAxisLinhas_Op04) {
+        this.yAxisLinhas_Op04 = yAxisLinhas_Op04;
     }
 
-    public Label getTpnLblExecucoes_R50() {
-        return tpnLblExecucoes_R50;
+    public Label getLblInf01_Op04() {
+        return lblInf01_Op04;
     }
 
-    public void setTpnLblExecucoes_R50(Label tpnLblExecucoes_R50) {
-        this.tpnLblExecucoes_R50 = tpnLblExecucoes_R50;
+    public void setLblInf01_Op04(Label lblInf01_Op04) {
+        this.lblInf01_Op04 = lblInf01_Op04;
     }
 
-    public Label getTpnLblVitorias_R50() {
-        return tpnLblVitorias_R50;
+    public Label getLblVlrInf01_Op04() {
+        return lblVlrInf01_Op04;
     }
 
-    public void setTpnLblVitorias_R50(Label tpnLblVitorias_R50) {
-        this.tpnLblVitorias_R50 = tpnLblVitorias_R50;
+    public void setLblVlrInf01_Op04(Label lblVlrInf01_Op04) {
+        this.lblVlrInf01_Op04 = lblVlrInf01_Op04;
     }
 
-    public Label getTpnLblDerrotas_R50() {
-        return tpnLblDerrotas_R50;
+    public Label getLblPorcInf01_Op04() {
+        return lblPorcInf01_Op04;
     }
 
-    public void setTpnLblDerrotas_R50(Label tpnLblDerrotas_R50) {
-        this.tpnLblDerrotas_R50 = tpnLblDerrotas_R50;
+    public void setLblPorcInf01_Op04(Label lblPorcInf01_Op04) {
+        this.lblPorcInf01_Op04 = lblPorcInf01_Op04;
     }
 
-    public Label getTpnLblLucro_R50() {
-        return tpnLblLucro_R50;
+    public Label getLblInf02_Op04() {
+        return lblInf02_Op04;
     }
 
-    public void setTpnLblLucro_R50(Label tpnLblLucro_R50) {
-        this.tpnLblLucro_R50 = tpnLblLucro_R50;
+    public void setLblInf02_Op04(Label lblInf02_Op04) {
+        this.lblInf02_Op04 = lblInf02_Op04;
     }
 
-    public TitledPane getTpn_R75() {
-        return tpn_R75;
+    public Label getLblVlrInf02_Op04() {
+        return lblVlrInf02_Op04;
     }
 
-    public void setTpn_R75(TitledPane tpn_R75) {
-        this.tpn_R75 = tpn_R75;
+    public void setLblVlrInf02_Op04(Label lblVlrInf02_Op04) {
+        this.lblVlrInf02_Op04 = lblVlrInf02_Op04;
     }
 
-    public BarChart<String, Number> getGrafBar_R75() {
-        return grafBar_R75;
+    public Label getLblPorcInf02_Op04() {
+        return lblPorcInf02_Op04;
     }
 
-    public void setGrafBar_R75(BarChart<String, Number> grafBar_R75) {
-        this.grafBar_R75 = grafBar_R75;
+    public void setLblPorcInf02_Op04(Label lblPorcInf02_Op04) {
+        this.lblPorcInf02_Op04 = lblPorcInf02_Op04;
     }
 
-    public NumberAxis getyAxisBar_R75() {
-        return yAxisBar_R75;
+    public Label getLblTickUltimo_Op04() {
+        return lblTickUltimo_Op04;
     }
 
-    public void setyAxisBar_R75(NumberAxis yAxisBar_R75) {
-        this.yAxisBar_R75 = yAxisBar_R75;
+    public void setLblTickUltimo_Op04(Label lblTickUltimo_Op04) {
+        this.lblTickUltimo_Op04 = lblTickUltimo_Op04;
     }
 
-    public BarChart<String, Number> getGrafBar_HZ75() {
-        return grafBar_HZ75;
+    public Label getLblLegendaTickUltimo_Op04() {
+        return lblLegendaTickUltimo_Op04;
     }
 
-    public void setGrafBar_HZ75(BarChart<String, Number> grafBar_HZ75) {
-        this.grafBar_HZ75 = grafBar_HZ75;
+    public void setLblLegendaTickUltimo_Op04(Label lblLegendaTickUltimo_Op04) {
+        this.lblLegendaTickUltimo_Op04 = lblLegendaTickUltimo_Op04;
     }
 
-    public NumberAxis getyAxisBar_HZ75() {
-        return yAxisBar_HZ75;
+    public Button getBtnContratos_Op04() {
+        return btnContratos_Op04;
     }
 
-    public void setyAxisBar_HZ75(NumberAxis yAxisBar_HZ75) {
-        this.yAxisBar_HZ75 = yAxisBar_HZ75;
+    public void setBtnContratos_Op04(Button btnContratos_Op04) {
+        this.btnContratos_Op04 = btnContratos_Op04;
     }
 
-    public LineChart getGrafLine_R75() {
-        return grafLine_R75;
+    public Button getBtnComprar_Op04() {
+        return btnComprar_Op04;
     }
 
-    public void setGrafLine_R75(LineChart grafLine_R75) {
-        this.grafLine_R75 = grafLine_R75;
+    public void setBtnComprar_Op04(Button btnComprar_Op04) {
+        this.btnComprar_Op04 = btnComprar_Op04;
     }
 
-    public NumberAxis getyAxisLine_R75() {
-        return yAxisLine_R75;
+    public Button getBtnPausar_Op04() {
+        return btnPausar_Op04;
     }
 
-    public void setyAxisLine_R75(NumberAxis yAxisLine_R75) {
-        this.yAxisLine_R75 = yAxisLine_R75;
+    public void setBtnPausar_Op04(Button btnPausar_Op04) {
+        this.btnPausar_Op04 = btnPausar_Op04;
     }
 
-    public LineChart getGrafLine_HZ75() {
-        return grafLine_HZ75;
+    public Button getBtnStop_Op04() {
+        return btnStop_Op04;
     }
 
-    public void setGrafLine_HZ75(LineChart grafLine_HZ75) {
-        this.grafLine_HZ75 = grafLine_HZ75;
+    public void setBtnStop_Op04(Button btnStop_Op04) {
+        this.btnStop_Op04 = btnStop_Op04;
     }
 
-    public NumberAxis getyAxisLine_HZ75() {
-        return yAxisLine_HZ75;
+    public Label getLblInvestido_Op04() {
+        return lblInvestido_Op04;
     }
 
-    public void setyAxisLine_HZ75(NumberAxis yAxisLine_HZ75) {
-        this.yAxisLine_HZ75 = yAxisLine_HZ75;
+    public void setLblInvestido_Op04(Label lblInvestido_Op04) {
+        this.lblInvestido_Op04 = lblInvestido_Op04;
     }
 
-    public Label getLblInf01_R75() {
-        return lblInf01_R75;
+    public Label getLblInvestidoPorc_Op04() {
+        return lblInvestidoPorc_Op04;
     }
 
-    public void setLblInf01_R75(Label lblInf01_R75) {
-        this.lblInf01_R75 = lblInf01_R75;
+    public void setLblInvestidoPorc_Op04(Label lblInvestidoPorc_Op04) {
+        this.lblInvestidoPorc_Op04 = lblInvestidoPorc_Op04;
     }
 
-    public Label getLblVlrInf01_R75() {
-        return lblVlrInf01_R75;
+    public Label getLblPremiacao_Op04() {
+        return lblPremiacao_Op04;
     }
 
-    public void setLblVlrInf01_R75(Label lblVlrInf01_R75) {
-        this.lblVlrInf01_R75 = lblVlrInf01_R75;
+    public void setLblPremiacao_Op04(Label lblPremiacao_Op04) {
+        this.lblPremiacao_Op04 = lblPremiacao_Op04;
     }
 
-    public Label getLblPorcInf01_R75() {
-        return lblPorcInf01_R75;
+    public Label getLblPremiacaoPorc_Op04() {
+        return lblPremiacaoPorc_Op04;
     }
 
-    public void setLblPorcInf01_R75(Label lblPorcInf01_R75) {
-        this.lblPorcInf01_R75 = lblPorcInf01_R75;
+    public void setLblPremiacaoPorc_Op04(Label lblPremiacaoPorc_Op04) {
+        this.lblPremiacaoPorc_Op04 = lblPremiacaoPorc_Op04;
     }
 
-    public Label getLblInf02_R75() {
-        return lblInf02_R75;
+    public Label getLblLucro_Op04() {
+        return lblLucro_Op04;
     }
 
-    public void setLblInf02_R75(Label lblInf02_R75) {
-        this.lblInf02_R75 = lblInf02_R75;
+    public void setLblLucro_Op04(Label lblLucro_Op04) {
+        this.lblLucro_Op04 = lblLucro_Op04;
     }
 
-    public Label getLblVlrInf02_R75() {
-        return lblVlrInf02_R75;
+    public Label getLblLucroPorc_Op04() {
+        return lblLucroPorc_Op04;
     }
 
-    public void setLblVlrInf02_R75(Label lblVlrInf02_R75) {
-        this.lblVlrInf02_R75 = lblVlrInf02_R75;
+    public void setLblLucroPorc_Op04(Label lblLucroPorc_Op04) {
+        this.lblLucroPorc_Op04 = lblLucroPorc_Op04;
     }
 
-    public Label getLblPorcInf02_R75() {
-        return lblPorcInf02_R75;
+    public TableView<Transacoes> getTbvTransacoes_Op04() {
+        return tbvTransacoes_Op04;
     }
 
-    public void setLblPorcInf02_R75(Label lblPorcInf02_R75) {
-        this.lblPorcInf02_R75 = lblPorcInf02_R75;
+    public void setTbvTransacoes_Op04(TableView<Transacoes> tbvTransacoes_Op04) {
+        this.tbvTransacoes_Op04 = tbvTransacoes_Op04;
     }
 
-    public Label getLblTickUltimo_R75() {
-        return lblTickUltimo_R75;
+    public ComboBox<Symbol> getCboMercado04() {
+        return cboMercado04;
     }
 
-    public void setLblTickUltimo_R75(Label lblTickUltimo_R75) {
-        this.lblTickUltimo_R75 = lblTickUltimo_R75;
+    public void setCboMercado04(ComboBox<Symbol> cboMercado04) {
+        this.cboMercado04 = cboMercado04;
     }
 
-    public Label getLblLegendaTickUltimo_R75() {
-        return lblLegendaTickUltimo_R75;
+    public CheckBox getChkAtivo_Op04() {
+        return chkAtivo_Op04;
     }
 
-    public void setLblLegendaTickUltimo_R75(Label lblLegendaTickUltimo_R75) {
-        this.lblLegendaTickUltimo_R75 = lblLegendaTickUltimo_R75;
+    public void setChkAtivo_Op04(CheckBox chkAtivo_Op04) {
+        this.chkAtivo_Op04 = chkAtivo_Op04;
     }
 
-    public Button getBtnContratos_R75() {
-        return btnContratos_R75;
+    public Label getTpnLblLegendaExecucoes_Op04() {
+        return tpnLblLegendaExecucoes_Op04;
     }
 
-    public void setBtnContratos_R75(Button btnContratos_R75) {
-        this.btnContratos_R75 = btnContratos_R75;
+    public void setTpnLblLegendaExecucoes_Op04(Label tpnLblLegendaExecucoes_Op04) {
+        this.tpnLblLegendaExecucoes_Op04 = tpnLblLegendaExecucoes_Op04;
     }
 
-    public Button getBtnComprar_R75() {
-        return btnComprar_R75;
+    public Label getTpnLblExecucoes_Op04() {
+        return tpnLblExecucoes_Op04;
     }
 
-    public void setBtnComprar_R75(Button btnComprar_R75) {
-        this.btnComprar_R75 = btnComprar_R75;
+    public void setTpnLblExecucoes_Op04(Label tpnLblExecucoes_Op04) {
+        this.tpnLblExecucoes_Op04 = tpnLblExecucoes_Op04;
     }
 
-    public Button getBtnPausar_R75() {
-        return btnPausar_R75;
+    public Label getTpnLblVitorias_Op04() {
+        return tpnLblVitorias_Op04;
     }
 
-    public void setBtnPausar_R75(Button btnPausar_R75) {
-        this.btnPausar_R75 = btnPausar_R75;
+    public void setTpnLblVitorias_Op04(Label tpnLblVitorias_Op04) {
+        this.tpnLblVitorias_Op04 = tpnLblVitorias_Op04;
     }
 
-    public Button getBtnStop_R75() {
-        return btnStop_R75;
+    public Label getTpnLblDerrotas_Op04() {
+        return tpnLblDerrotas_Op04;
     }
 
-    public void setBtnStop_R75(Button btnStop_R75) {
-        this.btnStop_R75 = btnStop_R75;
+    public void setTpnLblDerrotas_Op04(Label tpnLblDerrotas_Op04) {
+        this.tpnLblDerrotas_Op04 = tpnLblDerrotas_Op04;
     }
 
-    public Label getLblInvestido_R75() {
-        return lblInvestido_R75;
+    public Label getTpnLblLucro_Op04() {
+        return tpnLblLucro_Op04;
     }
 
-    public void setLblInvestido_R75(Label lblInvestido_R75) {
-        this.lblInvestido_R75 = lblInvestido_R75;
+    public void setTpnLblLucro_Op04(Label tpnLblLucro_Op04) {
+        this.tpnLblLucro_Op04 = tpnLblLucro_Op04;
     }
 
-    public Label getLblInvestidoPorc_R75() {
-        return lblInvestidoPorc_R75;
+    public TitledPane getTpn_Op05() {
+        return tpn_Op05;
     }
 
-    public void setLblInvestidoPorc_R75(Label lblInvestidoPorc_R75) {
-        this.lblInvestidoPorc_R75 = lblInvestidoPorc_R75;
+    public void setTpn_Op05(TitledPane tpn_Op05) {
+        this.tpn_Op05 = tpn_Op05;
     }
 
-    public Label getLblPremiacao_R75() {
-        return lblPremiacao_R75;
+    public BarChart<String, Number> getGraficoBarras_Op05() {
+        return graficoBarras_Op05;
     }
 
-    public void setLblPremiacao_R75(Label lblPremiacao_R75) {
-        this.lblPremiacao_R75 = lblPremiacao_R75;
+    public void setGraficoBarras_Op05(BarChart<String, Number> graficoBarras_Op05) {
+        this.graficoBarras_Op05 = graficoBarras_Op05;
     }
 
-    public Label getLblPremiacaoPorc_R75() {
-        return lblPremiacaoPorc_R75;
+    public NumberAxis getyAxisBarras_Op05() {
+        return yAxisBarras_Op05;
     }
 
-    public void setLblPremiacaoPorc_R75(Label lblPremiacaoPorc_R75) {
-        this.lblPremiacaoPorc_R75 = lblPremiacaoPorc_R75;
+    public void setyAxisBarras_Op05(NumberAxis yAxisBarras_Op05) {
+        this.yAxisBarras_Op05 = yAxisBarras_Op05;
     }
 
-    public Label getLblLucro_R75() {
-        return lblLucro_R75;
+    public LineChart getGraficoLinhas_Op05() {
+        return graficoLinhas_Op05;
     }
 
-    public void setLblLucro_R75(Label lblLucro_R75) {
-        this.lblLucro_R75 = lblLucro_R75;
+    public void setGraficoLinhas_Op05(LineChart graficoLinhas_Op05) {
+        this.graficoLinhas_Op05 = graficoLinhas_Op05;
     }
 
-    public Label getLblLucroPorc_R75() {
-        return lblLucroPorc_R75;
+    public NumberAxis getyAxisLinhas_Op05() {
+        return yAxisLinhas_Op05;
     }
 
-    public void setLblLucroPorc_R75(Label lblLucroPorc_R75) {
-        this.lblLucroPorc_R75 = lblLucroPorc_R75;
+    public void setyAxisLinhas_Op05(NumberAxis yAxisLinhas_Op05) {
+        this.yAxisLinhas_Op05 = yAxisLinhas_Op05;
     }
 
-    public TableView<Transacoes> getTbvTransacoes_R75() {
-        return tbvTransacoes_R75;
+    public Label getLblInf01_Op05() {
+        return lblInf01_Op05;
     }
 
-    public void setTbvTransacoes_R75(TableView<Transacoes> tbvTransacoes_R75) {
-        this.tbvTransacoes_R75 = tbvTransacoes_R75;
+    public void setLblInf01_Op05(Label lblInf01_Op05) {
+        this.lblInf01_Op05 = lblInf01_Op05;
     }
 
-    public CheckBox getChkAtivo_R75() {
-        return chkAtivo_R75;
+    public Label getLblVlrInf01_Op05() {
+        return lblVlrInf01_Op05;
     }
 
-    public void setChkAtivo_R75(CheckBox chkAtivo_R75) {
-        this.chkAtivo_R75 = chkAtivo_R75;
+    public void setLblVlrInf01_Op05(Label lblVlrInf01_Op05) {
+        this.lblVlrInf01_Op05 = lblVlrInf01_Op05;
     }
 
-    public Label getTpnLblLegendaExecucoes_R75() {
-        return tpnLblLegendaExecucoes_R75;
+    public Label getLblPorcInf01_Op05() {
+        return lblPorcInf01_Op05;
     }
 
-    public void setTpnLblLegendaExecucoes_R75(Label tpnLblLegendaExecucoes_R75) {
-        this.tpnLblLegendaExecucoes_R75 = tpnLblLegendaExecucoes_R75;
+    public void setLblPorcInf01_Op05(Label lblPorcInf01_Op05) {
+        this.lblPorcInf01_Op05 = lblPorcInf01_Op05;
     }
 
-    public Label getTpnLblExecucoes_R75() {
-        return tpnLblExecucoes_R75;
+    public Label getLblInf02_Op05() {
+        return lblInf02_Op05;
     }
 
-    public void setTpnLblExecucoes_R75(Label tpnLblExecucoes_R75) {
-        this.tpnLblExecucoes_R75 = tpnLblExecucoes_R75;
+    public void setLblInf02_Op05(Label lblInf02_Op05) {
+        this.lblInf02_Op05 = lblInf02_Op05;
     }
 
-    public Label getTpnLblVitorias_R75() {
-        return tpnLblVitorias_R75;
+    public Label getLblVlrInf02_Op05() {
+        return lblVlrInf02_Op05;
     }
 
-    public void setTpnLblVitorias_R75(Label tpnLblVitorias_R75) {
-        this.tpnLblVitorias_R75 = tpnLblVitorias_R75;
+    public void setLblVlrInf02_Op05(Label lblVlrInf02_Op05) {
+        this.lblVlrInf02_Op05 = lblVlrInf02_Op05;
     }
 
-    public Label getTpnLblDerrotas_R75() {
-        return tpnLblDerrotas_R75;
+    public Label getLblPorcInf02_Op05() {
+        return lblPorcInf02_Op05;
     }
 
-    public void setTpnLblDerrotas_R75(Label tpnLblDerrotas_R75) {
-        this.tpnLblDerrotas_R75 = tpnLblDerrotas_R75;
+    public void setLblPorcInf02_Op05(Label lblPorcInf02_Op05) {
+        this.lblPorcInf02_Op05 = lblPorcInf02_Op05;
     }
 
-    public Label getTpnLblLucro_R75() {
-        return tpnLblLucro_R75;
+    public Label getLblTickUltimo_Op05() {
+        return lblTickUltimo_Op05;
     }
 
-    public void setTpnLblLucro_R75(Label tpnLblLucro_R75) {
-        this.tpnLblLucro_R75 = tpnLblLucro_R75;
+    public void setLblTickUltimo_Op05(Label lblTickUltimo_Op05) {
+        this.lblTickUltimo_Op05 = lblTickUltimo_Op05;
     }
 
-    public TitledPane getTpn_R100() {
-        return tpn_R100;
+    public Label getLblLegendaTickUltimo_Op05() {
+        return lblLegendaTickUltimo_Op05;
     }
 
-    public void setTpn_R100(TitledPane tpn_R100) {
-        this.tpn_R100 = tpn_R100;
+    public void setLblLegendaTickUltimo_Op05(Label lblLegendaTickUltimo_Op05) {
+        this.lblLegendaTickUltimo_Op05 = lblLegendaTickUltimo_Op05;
     }
 
-    public BarChart<String, Number> getGrafBar_R100() {
-        return grafBar_R100;
+    public Button getBtnContratos_Op05() {
+        return btnContratos_Op05;
     }
 
-    public void setGrafBar_R100(BarChart<String, Number> grafBar_R100) {
-        this.grafBar_R100 = grafBar_R100;
+    public void setBtnContratos_Op05(Button btnContratos_Op05) {
+        this.btnContratos_Op05 = btnContratos_Op05;
     }
 
-    public NumberAxis getyAxisBar_R100() {
-        return yAxisBar_R100;
+    public Button getBtnComprar_Op05() {
+        return btnComprar_Op05;
     }
 
-    public void setyAxisBar_R100(NumberAxis yAxisBar_R100) {
-        this.yAxisBar_R100 = yAxisBar_R100;
+    public void setBtnComprar_Op05(Button btnComprar_Op05) {
+        this.btnComprar_Op05 = btnComprar_Op05;
     }
 
-    public BarChart<String, Number> getGrafBar_HZ100() {
-        return grafBar_HZ100;
+    public Button getBtnPausar_Op05() {
+        return btnPausar_Op05;
     }
 
-    public void setGrafBar_HZ100(BarChart<String, Number> grafBar_HZ100) {
-        this.grafBar_HZ100 = grafBar_HZ100;
+    public void setBtnPausar_Op05(Button btnPausar_Op05) {
+        this.btnPausar_Op05 = btnPausar_Op05;
     }
 
-    public NumberAxis getyAxisBar_HZ100() {
-        return yAxisBar_HZ100;
+    public Button getBtnStop_Op05() {
+        return btnStop_Op05;
     }
 
-    public void setyAxisBar_HZ100(NumberAxis yAxisBar_HZ100) {
-        this.yAxisBar_HZ100 = yAxisBar_HZ100;
+    public void setBtnStop_Op05(Button btnStop_Op05) {
+        this.btnStop_Op05 = btnStop_Op05;
     }
 
-    public LineChart getGrafLine_R100() {
-        return grafLine_R100;
+    public Label getLblInvestido_Op05() {
+        return lblInvestido_Op05;
     }
 
-    public void setGrafLine_R100(LineChart grafLine_R100) {
-        this.grafLine_R100 = grafLine_R100;
+    public void setLblInvestido_Op05(Label lblInvestido_Op05) {
+        this.lblInvestido_Op05 = lblInvestido_Op05;
     }
 
-    public NumberAxis getyAxisLine_R100() {
-        return yAxisLine_R100;
+    public Label getLblInvestidoPorc_Op05() {
+        return lblInvestidoPorc_Op05;
     }
 
-    public void setyAxisLine_R100(NumberAxis yAxisLine_R100) {
-        this.yAxisLine_R100 = yAxisLine_R100;
+    public void setLblInvestidoPorc_Op05(Label lblInvestidoPorc_Op05) {
+        this.lblInvestidoPorc_Op05 = lblInvestidoPorc_Op05;
     }
 
-    public LineChart getGrafLine_HZ100() {
-        return grafLine_HZ100;
+    public Label getLblPremiacao_Op05() {
+        return lblPremiacao_Op05;
     }
 
-    public void setGrafLine_HZ100(LineChart grafLine_HZ100) {
-        this.grafLine_HZ100 = grafLine_HZ100;
+    public void setLblPremiacao_Op05(Label lblPremiacao_Op05) {
+        this.lblPremiacao_Op05 = lblPremiacao_Op05;
     }
 
-    public NumberAxis getyAxisLine_HZ100() {
-        return yAxisLine_HZ100;
+    public Label getLblPremiacaoPorc_Op05() {
+        return lblPremiacaoPorc_Op05;
     }
 
-    public void setyAxisLine_HZ100(NumberAxis yAxisLine_HZ100) {
-        this.yAxisLine_HZ100 = yAxisLine_HZ100;
+    public void setLblPremiacaoPorc_Op05(Label lblPremiacaoPorc_Op05) {
+        this.lblPremiacaoPorc_Op05 = lblPremiacaoPorc_Op05;
     }
 
-    public Label getLblInf01_R100() {
-        return lblInf01_R100;
+    public Label getLblLucro_Op05() {
+        return lblLucro_Op05;
     }
 
-    public void setLblInf01_R100(Label lblInf01_R100) {
-        this.lblInf01_R100 = lblInf01_R100;
+    public void setLblLucro_Op05(Label lblLucro_Op05) {
+        this.lblLucro_Op05 = lblLucro_Op05;
     }
 
-    public Label getLblVlrInf01_R100() {
-        return lblVlrInf01_R100;
+    public Label getLblLucroPorc_Op05() {
+        return lblLucroPorc_Op05;
     }
 
-    public void setLblVlrInf01_R100(Label lblVlrInf01_R100) {
-        this.lblVlrInf01_R100 = lblVlrInf01_R100;
+    public void setLblLucroPorc_Op05(Label lblLucroPorc_Op05) {
+        this.lblLucroPorc_Op05 = lblLucroPorc_Op05;
     }
 
-    public Label getLblPorcInf01_R100() {
-        return lblPorcInf01_R100;
+    public TableView<Transacoes> getTbvTransacoes_Op05() {
+        return tbvTransacoes_Op05;
     }
 
-    public void setLblPorcInf01_R100(Label lblPorcInf01_R100) {
-        this.lblPorcInf01_R100 = lblPorcInf01_R100;
+    public void setTbvTransacoes_Op05(TableView<Transacoes> tbvTransacoes_Op05) {
+        this.tbvTransacoes_Op05 = tbvTransacoes_Op05;
     }
 
-    public Label getLblInf02_R100() {
-        return lblInf02_R100;
+    public ComboBox<Symbol> getCboMercado05() {
+        return cboMercado05;
     }
 
-    public void setLblInf02_R100(Label lblInf02_R100) {
-        this.lblInf02_R100 = lblInf02_R100;
+    public void setCboMercado05(ComboBox<Symbol> cboMercado05) {
+        this.cboMercado05 = cboMercado05;
     }
 
-    public Label getLblVlrInf02_R100() {
-        return lblVlrInf02_R100;
+    public CheckBox getChkAtivo_Op05() {
+        return chkAtivo_Op05;
     }
 
-    public void setLblVlrInf02_R100(Label lblVlrInf02_R100) {
-        this.lblVlrInf02_R100 = lblVlrInf02_R100;
+    public void setChkAtivo_Op05(CheckBox chkAtivo_Op05) {
+        this.chkAtivo_Op05 = chkAtivo_Op05;
     }
 
-    public Label getLblPorcInf02_R100() {
-        return lblPorcInf02_R100;
+    public Label getTpnLblLegendaExecucoes_Op05() {
+        return tpnLblLegendaExecucoes_Op05;
     }
 
-    public void setLblPorcInf02_R100(Label lblPorcInf02_R100) {
-        this.lblPorcInf02_R100 = lblPorcInf02_R100;
+    public void setTpnLblLegendaExecucoes_Op05(Label tpnLblLegendaExecucoes_Op05) {
+        this.tpnLblLegendaExecucoes_Op05 = tpnLblLegendaExecucoes_Op05;
     }
 
-    public Label getLblTickUltimo_R100() {
-        return lblTickUltimo_R100;
+    public Label getTpnLblExecucoes_Op05() {
+        return tpnLblExecucoes_Op05;
     }
 
-    public void setLblTickUltimo_R100(Label lblTickUltimo_R100) {
-        this.lblTickUltimo_R100 = lblTickUltimo_R100;
+    public void setTpnLblExecucoes_Op05(Label tpnLblExecucoes_Op05) {
+        this.tpnLblExecucoes_Op05 = tpnLblExecucoes_Op05;
     }
 
-    public Label getLblLegendaTickUltimo_R100() {
-        return lblLegendaTickUltimo_R100;
+    public Label getTpnLblVitorias_Op05() {
+        return tpnLblVitorias_Op05;
     }
 
-    public void setLblLegendaTickUltimo_R100(Label lblLegendaTickUltimo_R100) {
-        this.lblLegendaTickUltimo_R100 = lblLegendaTickUltimo_R100;
+    public void setTpnLblVitorias_Op05(Label tpnLblVitorias_Op05) {
+        this.tpnLblVitorias_Op05 = tpnLblVitorias_Op05;
     }
 
-    public Button getBtnContratos_R100() {
-        return btnContratos_R100;
+    public Label getTpnLblDerrotas_Op05() {
+        return tpnLblDerrotas_Op05;
     }
 
-    public void setBtnContratos_R100(Button btnContratos_R100) {
-        this.btnContratos_R100 = btnContratos_R100;
+    public void setTpnLblDerrotas_Op05(Label tpnLblDerrotas_Op05) {
+        this.tpnLblDerrotas_Op05 = tpnLblDerrotas_Op05;
     }
 
-    public Button getBtnComprar_R100() {
-        return btnComprar_R100;
+    public Label getTpnLblLucro_Op05() {
+        return tpnLblLucro_Op05;
     }
 
-    public void setBtnComprar_R100(Button btnComprar_R100) {
-        this.btnComprar_R100 = btnComprar_R100;
-    }
-
-    public Button getBtnPausar_R100() {
-        return btnPausar_R100;
-    }
-
-    public void setBtnPausar_R100(Button btnPausar_R100) {
-        this.btnPausar_R100 = btnPausar_R100;
-    }
-
-    public Button getBtnStop_R100() {
-        return btnStop_R100;
-    }
-
-    public void setBtnStop_R100(Button btnStop_R100) {
-        this.btnStop_R100 = btnStop_R100;
-    }
-
-    public Label getLblInvestido_R100() {
-        return lblInvestido_R100;
-    }
-
-    public void setLblInvestido_R100(Label lblInvestido_R100) {
-        this.lblInvestido_R100 = lblInvestido_R100;
-    }
-
-    public Label getLblInvestidoPorc_R100() {
-        return lblInvestidoPorc_R100;
-    }
-
-    public void setLblInvestidoPorc_R100(Label lblInvestidoPorc_R100) {
-        this.lblInvestidoPorc_R100 = lblInvestidoPorc_R100;
-    }
-
-    public Label getLblPremiacao_R100() {
-        return lblPremiacao_R100;
-    }
-
-    public void setLblPremiacao_R100(Label lblPremiacao_R100) {
-        this.lblPremiacao_R100 = lblPremiacao_R100;
-    }
-
-    public Label getLblPremiacaoPorc_R100() {
-        return lblPremiacaoPorc_R100;
-    }
-
-    public void setLblPremiacaoPorc_R100(Label lblPremiacaoPorc_R100) {
-        this.lblPremiacaoPorc_R100 = lblPremiacaoPorc_R100;
-    }
-
-    public Label getLblLucro_R100() {
-        return lblLucro_R100;
-    }
-
-    public void setLblLucro_R100(Label lblLucro_R100) {
-        this.lblLucro_R100 = lblLucro_R100;
-    }
-
-    public Label getLblLucroPorc_R100() {
-        return lblLucroPorc_R100;
-    }
-
-    public void setLblLucroPorc_R100(Label lblLucroPorc_R100) {
-        this.lblLucroPorc_R100 = lblLucroPorc_R100;
-    }
-
-    public TableView<Transacoes> getTbvTransacoes_R100() {
-        return tbvTransacoes_R100;
-    }
-
-    public void setTbvTransacoes_R100(TableView<Transacoes> tbvTransacoes_R100) {
-        this.tbvTransacoes_R100 = tbvTransacoes_R100;
-    }
-
-    public CheckBox getChkAtivo_R100() {
-        return chkAtivo_R100;
-    }
-
-    public void setChkAtivo_R100(CheckBox chkAtivo_R100) {
-        this.chkAtivo_R100 = chkAtivo_R100;
-    }
-
-    public Label getTpnLblLegendaExecucoes_R100() {
-        return tpnLblLegendaExecucoes_R100;
-    }
-
-    public void setTpnLblLegendaExecucoes_R100(Label tpnLblLegendaExecucoes_R100) {
-        this.tpnLblLegendaExecucoes_R100 = tpnLblLegendaExecucoes_R100;
-    }
-
-    public Label getTpnLblExecucoes_R100() {
-        return tpnLblExecucoes_R100;
-    }
-
-    public void setTpnLblExecucoes_R100(Label tpnLblExecucoes_R100) {
-        this.tpnLblExecucoes_R100 = tpnLblExecucoes_R100;
-    }
-
-    public Label getTpnLblVitorias_R100() {
-        return tpnLblVitorias_R100;
-    }
-
-    public void setTpnLblVitorias_R100(Label tpnLblVitorias_R100) {
-        this.tpnLblVitorias_R100 = tpnLblVitorias_R100;
-    }
-
-    public Label getTpnLblDerrotas_R100() {
-        return tpnLblDerrotas_R100;
-    }
-
-    public void setTpnLblDerrotas_R100(Label tpnLblDerrotas_R100) {
-        this.tpnLblDerrotas_R100 = tpnLblDerrotas_R100;
-    }
-
-    public Label getTpnLblLucro_R100() {
-        return tpnLblLucro_R100;
-    }
-
-    public void setTpnLblLucro_R100(Label tpnLblLucro_R100) {
-        this.tpnLblLucro_R100 = tpnLblLucro_R100;
+    public void setTpnLblLucro_Op05(Label tpnLblLucro_Op05) {
+        this.tpnLblLucro_Op05 = tpnLblLucro_Op05;
     }
 }
