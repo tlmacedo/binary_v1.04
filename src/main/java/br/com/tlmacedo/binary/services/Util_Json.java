@@ -3,7 +3,9 @@ package br.com.tlmacedo.binary.services;
 import br.com.tlmacedo.binary.controller.Operacoes;
 import br.com.tlmacedo.binary.model.vo.*;
 import br.com.tlmacedo.binary.model.vo.Error;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Util_Json {
 
@@ -36,23 +39,39 @@ public class Util_Json {
 
     public static Object getObject_from_String(String strJson, Class aClass) {
         JSONObject obj = new JSONObject(strJson);
+        System.out.printf("aClass:[%s]\n", aClass);
         try {
-            if (aClass == Buy.class || aClass == Error.class)
-                return getMapper().readValue(obj.getJSONObject(aClass.getSimpleName().toLowerCase()).toString(), aClass);
-            else
-                return getMapper().readValue(obj.getJSONObject(aClass.getSimpleName().toLowerCase()).toString(), aClass);
+            return getMapper().readValue(obj.getJSONObject(aClass.getSimpleName().toLowerCase()).toString(), aClass);
         } catch (Exception ex) {
-            if (!(ex instanceof JSONException))
+            if (!(ex instanceof JSONException)) {
                 ex.printStackTrace();
-            else {
+            } else {
                 try {
-                    return getMapper().readValue(obj.getJSONObject("error").toString(), Error.class);
-                } catch (JsonProcessingException ex1) {
-                    ex1.printStackTrace();
+                    if (aClass.equals(Symbols.class)) {
+
+                        System.out.printf("entrou aqui aClass:[%s]\n", aClass.getSimpleName());
+                        //getMapper().configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
+                        String str =
+                                String.format("{\"active_symbols\": %s}",
+                                        obj.getJSONArray("active_symbols").toString()
+                                );
+                        System.out.printf("return:\n%s\n", str);
+                        System.out.printf("objeto: \n%s\n", getMapper().readValue(str, Symbols.class).getActive_symbols().stream()
+                                .filter(activeSymbol -> activeSymbol.getMarket().equals("synthetic_index"))
+                                .collect(Collectors.toCollection(FXCollections::observableArrayList))
+                        );
+                        return getMapper().readValue(str, Symbols.class);
+                    } else {
+                        return getMapper().readValue(obj.getJSONObject("error").toString(), Error.class);
+                    }
+                } catch (JsonMappingException e) {
+                    e.printStackTrace();
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
                 }
             }
-            return null;
         }
+        return null;
     }
 
     public static void printJson_from_Object(Object object, String label) {

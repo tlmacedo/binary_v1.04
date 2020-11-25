@@ -15,7 +15,7 @@ public class HistoricoDeTicks implements Serializable {
     public static final long serialVersionUID = 1L;
 
     LongProperty id = new SimpleLongProperty();
-    ObjectProperty<Symbol> symbol = new SimpleObjectProperty<>();
+    ObjectProperty<ActiveSymbol> activeSymbol = new SimpleObjectProperty<>();
     ObjectProperty<BigDecimal> price = new SimpleObjectProperty<>();
     IntegerProperty ultimoDigito = new SimpleIntegerProperty();
     IntegerProperty pip_size = new SimpleIntegerProperty();
@@ -25,14 +25,14 @@ public class HistoricoDeTicks implements Serializable {
     }
 
     public HistoricoDeTicks(Integer symbolId, BigDecimal price, Integer time) {
-        this.symbol = new SimpleObjectProperty<>(Operacoes.getSymbolObservableList().get(symbolId));
-        this.price = new SimpleObjectProperty<>(price);
-        if (getSymbol().getName().contains("1HZ"))
-            this.pip_size = new SimpleIntegerProperty(2);
-        else
-            this.pip_size = new SimpleIntegerProperty(getSymbol().getPip_size());
-        this.time = new SimpleIntegerProperty(time);
-        setUltimoDigito();
+////        this.activeSymbol = new SimpleObjectProperty<>(Operacoes.getSymbolObservableList().get(symbolId));
+//        this.price = new SimpleObjectProperty<>(price);
+//        if (getSymbol().getName().contains("1HZ"))
+//            this.pip_size = new SimpleIntegerProperty(2);
+//        else
+//            this.pip_size = new SimpleIntegerProperty(getSymbol().getPip_size());
+//        this.time = new SimpleIntegerProperty(time);
+//        setUltimoDigito();
     }
 
     @Id
@@ -50,16 +50,16 @@ public class HistoricoDeTicks implements Serializable {
     }
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    public Symbol getSymbol() {
-        return symbol.get();
+    public ActiveSymbol getActiveSymbol() {
+        return activeSymbol.get();
     }
 
-    public ObjectProperty<Symbol> symbolProperty() {
-        return symbol;
+    public ObjectProperty<ActiveSymbol> activeSymbolProperty() {
+        return activeSymbol;
     }
 
-    public void setSymbol(Symbol symbol) {
-        this.symbol.set(symbol);
+    public void setActiveSymbol(ActiveSymbol activeSymbol) {
+        this.activeSymbol.set(activeSymbol);
     }
 
     @Column(length = 19, nullable = false, scale = 4)
@@ -129,7 +129,7 @@ public class HistoricoDeTicks implements Serializable {
     public String toString() {
         return "HistoricoDeTicks{" +
                 "id=" + id +
-                ", symbol=" + symbol +
+                ", activeSymbol=" + activeSymbol +
                 ", price=" + price +
                 ", ultimoDigito=" + ultimoDigito +
                 ", pip_size=" + pip_size +

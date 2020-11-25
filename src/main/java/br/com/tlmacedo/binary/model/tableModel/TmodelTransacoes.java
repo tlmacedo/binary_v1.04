@@ -1,7 +1,7 @@
 package br.com.tlmacedo.binary.model.tableModel;
 
 import br.com.tlmacedo.binary.controller.Operacoes;
-import br.com.tlmacedo.binary.model.vo.Symbol;
+import br.com.tlmacedo.binary.model.vo.ActiveSymbol;
 import br.com.tlmacedo.binary.model.vo.Transacoes;
 import br.com.tlmacedo.binary.services.Service_Mascara;
 import javafx.beans.property.*;
@@ -9,8 +9,6 @@ import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.scene.control.*;
-import javafx.scene.paint.Color;
-import javafx.util.Callback;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,7 +21,7 @@ import static br.com.tlmacedo.binary.interfaces.Constants.DTF_TMODEL_DATA_TRANSA
 
 public class TmodelTransacoes {
 
-    private Symbol symbol;
+    private ActiveSymbol activeSymbol;
     private TablePosition tp;
     private TableView<Transacoes> tbvTransacoes;
     private ObservableList<Transacoes> transacoesObservableList;
@@ -51,8 +49,10 @@ public class TmodelTransacoes {
     private ObjectProperty<BigDecimal> totalPremiacao = new SimpleObjectProperty<>(BigDecimal.ZERO);
     private ObjectProperty<BigDecimal> totalLucro = new SimpleObjectProperty<>(BigDecimal.ZERO);
 
-    public TmodelTransacoes(Integer symbolId) {
-        this.symbol = Operacoes.getSymbolObservableList().get(symbolId);
+    public TmodelTransacoes(Integer activeSymbolId) {
+        this.activeSymbol = Operacoes.getActiveSymbolObservableList().stream()
+                .filter(activeSymbol1 -> activeSymbol1.getId().intValue() == activeSymbolId)
+                .findFirst().orElse(null);
     }
 
     public void criarTabela() {
@@ -64,7 +64,7 @@ public class TmodelTransacoes {
         setColSymbol(new TableColumn<>("Symbol"));
         getColSymbol().setPrefWidth(60);
         getColSymbol().setStyle("-fx-alignment: center;");
-        getColSymbol().setCellValueFactory(param -> param.getValue().symbolProperty().asString());
+        getColSymbol().setCellValueFactory(param -> param.getValue().activeSymbolProperty().asString());
 
         setColDataHoraCompra(new TableColumn<>("carimbo hora"));
         getColDataHoraCompra().setPrefWidth(140);
@@ -78,7 +78,9 @@ public class TmodelTransacoes {
         getColTickCompra().setStyle("-fx-alignment: center-right;");
         getColTickCompra().setCellValueFactory(cellData -> {
             if (cellData.getValue().tickCompraProperty().getValue() != null)
-                return new SimpleStringProperty(Service_Mascara.getValorFormatado(getSymbol().getPip_size(), cellData.getValue().tickCompraProperty().getValue()));
+                return new SimpleStringProperty(Service_Mascara.getValorFormatado(
+                        getActiveSymbol().getPip().intValue(),
+                        cellData.getValue().tickCompraProperty().getValue()));
             return new SimpleStringProperty("");
         });
 
@@ -87,7 +89,9 @@ public class TmodelTransacoes {
         getColTickVenda().setStyle("-fx-alignment: center-right;");
         getColTickVenda().setCellValueFactory(cellData -> {
             if (cellData.getValue().tickVendaProperty().getValue() != null)
-                return new SimpleStringProperty(Service_Mascara.getValorFormatado(getSymbol().getPip_size(), cellData.getValue().tickVendaProperty().getValue()));
+                return new SimpleStringProperty(Service_Mascara.getValorFormatado(
+                        getActiveSymbol().getPip().intValue(),
+                        cellData.getValue().tickVendaProperty().getValue()));
             return new SimpleStringProperty("");
         });
 
@@ -143,7 +147,7 @@ public class TmodelTransacoes {
     }
 
     public void escutarTransacoesTabela() {
-        getTransacoesFilteredList().setPredicate(transacoes -> transacoes.getSymbol().getName().equals(getSymbol().getName()));
+        getTransacoesFilteredList().setPredicate(transacoes -> transacoes.getActiveSymbol().getSymbol().equals(getActiveSymbol().getSymbol()));
         getTransacoesObservableList().addListener((ListChangeListener<? super Transacoes>) change -> {
             totalizaTabela();
         });
@@ -221,12 +225,12 @@ public class TmodelTransacoes {
                         .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP));
     }
 
-    public Symbol getSymbol() {
-        return symbol;
+    public ActiveSymbol getActiveSymbol() {
+        return activeSymbol;
     }
 
-    public void setSymbol(Symbol symbol) {
-        this.symbol = symbol;
+    public void setActiveSymbol(ActiveSymbol activeSymbol) {
+        this.activeSymbol = activeSymbol;
     }
 
     public TablePosition getTp() {

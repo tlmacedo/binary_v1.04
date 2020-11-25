@@ -40,6 +40,7 @@ public interface Constants {
     Boolean CONSOLE_BINARY_ALL_SEM_TICKS = false;
 
     Boolean CONSOLE_BINARY_CONECTADO = true;
+    Boolean CONSOLE_BINARY_ACTIVE_SYMBOL = true;
     Boolean CONSOLE_BINARY_AUTHORIZE = false;
     Boolean CONSOLE_BINARY_ERROR = false;
     Boolean CONSOLE_BINARY_TICK = false;

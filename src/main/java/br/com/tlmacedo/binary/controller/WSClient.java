@@ -4,12 +4,16 @@ package br.com.tlmacedo.binary.controller;
 import br.com.tlmacedo.binary.model.enums.CONTRACT_TYPE;
 import br.com.tlmacedo.binary.model.enums.MSG_TYPE;
 import br.com.tlmacedo.binary.model.vo.*;
+import br.com.tlmacedo.binary.model.vo.Error;
 import br.com.tlmacedo.binary.services.Util_Json;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import javafx.collections.FXCollections;
+import javassist.compiler.ast.Symbol;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.Error;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static br.com.tlmacedo.binary.interfaces.Constants.*;
 
@@ -18,7 +22,7 @@ public class WSClient extends WebSocketListener {
     private static ObjectMapper mapper = new ObjectMapper();
     private WebSocket myWebSocket;
     private Msg_type msgType;
-    private ActiveSymbol activeSymbol;
+    private Symbols symbols;
     private Error error;
     private History history;
     private Tick tick;
@@ -50,9 +54,24 @@ public class WSClient extends WebSocketListener {
 
     @Override
     public void onMessage(@NotNull WebSocket webSocket, @NotNull String text) {
-        System.out.printf("...%s\n", text);
         setMsgType((Msg_type) Util_Json.getMsg_Type(text));
         imprime(text, getMsgType().getMsgType());
+
+//        Object obj = null;
+//        try {
+//            obj = Util_Json.getObject_from_String(text, Error.class);
+//            setError((Error) obj);
+//            refreshError();
+//        } catch (Exception ex){
+        switch (getMsgType().getMsgType()) {
+            case ACTIVE_SYMBOLS -> {
+                System.out.printf("será que vai????\n");
+                setSymbols((Symbols) Util_Json.getObject_from_String(text, Symbols.class));
+                System.out.printf("result: %s\n", getSymbols());
+                refreshActiveSymbols();
+            }
+        }
+//        }
     }
 
     /**
@@ -74,6 +93,7 @@ public class WSClient extends WebSocketListener {
         } else {
             boolean print = false;
             switch (msgType) {
+                case ACTIVE_SYMBOLS -> print = CONSOLE_BINARY_ACTIVE_SYMBOL;
                 case AUTHORIZE -> print = CONSOLE_BINARY_AUTHORIZE;
                 case ERROR -> print = CONSOLE_BINARY_ERROR;
                 case TICK -> print = CONSOLE_BINARY_TICK;
@@ -93,8 +113,20 @@ public class WSClient extends WebSocketListener {
         Operacoes.setWsConectado(conectado);
     }
 
-    private void refreshError(Error error) {
+    private void refreshActiveSymbols() {
+        ActiveSymbol symbol;
+        List<ActiveSymbol> activeSymbolList =
+        getSymbols().getActive_symbols().stream()
+                .filter(activeSymbol -> activeSymbol.getMarket().equals("synthetic_index"))
+                .collect(Collectors.toList());
+        for (int i = 0; i < activeSymbolList.size(); i++) {
+            symbol = activeSymbolList.get(i);
+            Operacoes.getActiveSymbolDAO().merger(symbol);
+        }
+    }
 
+    private void refreshError() {
+        System.out.printf("deu erro!!!!!\n%s\n", getError().toString());
     }
 
     private void refreshAuthorize(Authorize authorize) {
@@ -212,11 +244,11 @@ public class WSClient extends WebSocketListener {
         this.transaction = transaction;
     }
 
-    public ActiveSymbol getActiveSymbol() {
-        return activeSymbol;
+    public Symbols getSymbols() {
+        return symbols;
     }
 
-    public void setActiveSymbol(ActiveSymbol activeSymbol) {
-        this.activeSymbol = activeSymbol;
+    public void setSymbols(Symbols symbols) {
+        this.symbols = symbols;
     }
 }

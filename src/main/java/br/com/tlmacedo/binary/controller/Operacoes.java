@@ -1,8 +1,8 @@
 package br.com.tlmacedo.binary.controller;
 
 import br.com.tlmacedo.binary.controller.estrategias.RoboEstrategia;
+import br.com.tlmacedo.binary.model.dao.ActiveSymbolDAO;
 import br.com.tlmacedo.binary.model.dao.ContaTokenDAO;
-import br.com.tlmacedo.binary.model.dao.SymbolDAO;
 import br.com.tlmacedo.binary.model.dao.TransacoesDAO;
 import br.com.tlmacedo.binary.model.dao.TransactionDAO;
 import br.com.tlmacedo.binary.model.enums.ROBOS;
@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import static br.com.tlmacedo.binary.interfaces.Constants.DTF_MINUTOS_SEGUNDOS;
 
@@ -38,7 +39,7 @@ public class Operacoes implements Initializable {
      * Objetos DAO conecta com banco de dados
      */
     //** Banco de Dados **
-    static SymbolDAO symbolDAO = new SymbolDAO();
+    static ActiveSymbolDAO activeSymbolDAO = new ActiveSymbolDAO();
     static ContaTokenDAO contaTokenDAO = new ContaTokenDAO();
     static TransacoesDAO transacoesDAO = new TransacoesDAO();
     static TransactionDAO transactionDAO = new TransactionDAO();
@@ -48,14 +49,15 @@ public class Operacoes implements Initializable {
      * Identificação de volatilidades
      */
     //** Variaveis de identificacoes das volatilidades
-    static final ObservableList<Symbol> symbolObservableList = FXCollections.observableArrayList(getSymbolDAO().getAll(Symbol.class, "ativa=true", null));
+    static final ObservableList<ActiveSymbol> activeSymbolObservableList =
+            FXCollections.observableArrayList(getActiveSymbolDAO()
+                    .getAll(ActiveSymbol.class, null, null));
     static final Integer QTD_OPERADORES = 5;
     static final Integer OPERADOR_1 = 0;
     static final Integer OPERADOR_2 = 1;
     static final Integer OPERADOR_3 = 2;
     static final Integer OPERADOR_4 = 3;
     static final Integer OPERADOR_5 = 4;
-    static Symbol[] Operador = new Symbol[QTD_OPERADORES];
     /**
      * Contas corretora
      */
@@ -206,7 +208,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op01;
     public Label lblLucroPorc_Op01;
     public TableView<Transacoes> tbvTransacoes_Op01;
-    public ComboBox<Symbol> cboMercado01;
+    public ComboBox<ActiveSymbol> cboMercado01;
     public CheckBox chkAtivo_Op01;
     public Label tpnLblLegendaExecucoes_Op01;
     public Label tpnLblExecucoes_Op01;
@@ -239,7 +241,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op02;
     public Label lblLucroPorc_Op02;
     public TableView<Transacoes> tbvTransacoes_Op02;
-    public ComboBox<Symbol> cboMercado02;
+    public ComboBox<ActiveSymbol> cboMercado02;
     public CheckBox chkAtivo_Op02;
     public Label tpnLblLegendaExecucoes_Op02;
     public Label tpnLblExecucoes_Op02;
@@ -272,7 +274,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op03;
     public Label lblLucroPorc_Op03;
     public TableView<Transacoes> tbvTransacoes_Op03;
-    public ComboBox<Symbol> cboMercado03;
+    public ComboBox<ActiveSymbol> cboMercado03;
     public CheckBox chkAtivo_Op03;
     public Label tpnLblLegendaExecucoes_Op03;
     public Label tpnLblExecucoes_Op03;
@@ -305,7 +307,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op04;
     public Label lblLucroPorc_Op04;
     public TableView<Transacoes> tbvTransacoes_Op04;
-    public ComboBox<Symbol> cboMercado04;
+    public ComboBox<ActiveSymbol> cboMercado04;
     public CheckBox chkAtivo_Op04;
     public Label tpnLblLegendaExecucoes_Op04;
     public Label tpnLblExecucoes_Op04;
@@ -338,7 +340,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op05;
     public Label lblLucroPorc_Op05;
     public TableView<Transacoes> tbvTransacoes_Op05;
-    public ComboBox<Symbol> cboMercado05;
+    public ComboBox<ActiveSymbol> cboMercado05;
     public CheckBox chkAtivo_Op05;
     public Label tpnLblLegendaExecucoes_Op05;
     public Label tpnLblExecucoes_Op05;
@@ -358,9 +360,8 @@ public class Operacoes implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
 
-
         carregarVariaveisObjetos();
-
+        carregarObjetos();
     }
 
     private Task getTaskWsBinary() {
@@ -372,13 +373,9 @@ public class Operacoes implements Initializable {
                     if (n == null) return;
                     try {
                         if (n) {
-                            String jsonActiveSymbols = String.format("{\"active_symbols\":\"brief\",\"product_type\":\"basic\"}");
-                            System.out.printf("enviei: %s\n", jsonActiveSymbols);
-                            getWsClient().getMyWebSocket().send(jsonActiveSymbols);
-//                            getWsClient().getMyWebSocket().send("{\n" +
-//                                    "  \"active_symbols\": \"brief\",\n" +
-//                                    "  \"product_type\": \"basic\"\n" +
-//                                    "}");
+                            //solicitarActiveSymbols();
+
+
                         } else {
                             getBtnStop().fire();
                             new Service_Alert("Conexão fechou", "Conexão com a binary foi fechada!!", null)
@@ -400,6 +397,11 @@ public class Operacoes implements Initializable {
      * <p>
      * <p>
      */
+
+    private void carregarObjetos() {
+        getCboConta().setItems(getContaTokenDAO().getAll(ContaToken.class, "ativo=1", null)
+                .stream().collect(Collectors.toCollection(FXCollections::observableArrayList)));
+    }
 
     private void carregarVariaveisObjetos() {
 
@@ -438,6 +440,13 @@ public class Operacoes implements Initializable {
      * <p>
      * <p>
      */
+
+    private void solicitarActiveSymbols() {
+
+        String jsonActiveSymbols = new ActiveSymbols().toString();
+        getWsClient().getMyWebSocket().send(jsonActiveSymbols);
+
+    }
 
 
     /**
@@ -559,12 +568,12 @@ public class Operacoes implements Initializable {
      * <p>
      */
 
-    public static SymbolDAO getSymbolDAO() {
-        return symbolDAO;
+    public static ActiveSymbolDAO getActiveSymbolDAO() {
+        return activeSymbolDAO;
     }
 
-    public static void setSymbolDAO(SymbolDAO symbolDAO) {
-        Operacoes.symbolDAO = symbolDAO;
+    public static void setActiveSymbolDAO(ActiveSymbolDAO activeSymbolDAO) {
+        Operacoes.activeSymbolDAO = activeSymbolDAO;
     }
 
     public static ContaTokenDAO getContaTokenDAO() {
@@ -591,8 +600,8 @@ public class Operacoes implements Initializable {
         Operacoes.transactionDAO = transactionDAO;
     }
 
-    public static ObservableList<Symbol> getSymbolObservableList() {
-        return symbolObservableList;
+    public static ObservableList<ActiveSymbol> getActiveSymbolObservableList() {
+        return activeSymbolObservableList;
     }
 
     public static Integer getQtdOperadores() {
@@ -617,14 +626,6 @@ public class Operacoes implements Initializable {
 
     public static Integer getOperador5() {
         return OPERADOR_5;
-    }
-
-    public static Symbol[] getOperador() {
-        return Operador;
-    }
-
-    public static void setOperador(Symbol[] operador) {
-        Operador = operador;
     }
 
     public static ContaToken getContaToken() {
@@ -1395,11 +1396,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op01 = tbvTransacoes_Op01;
     }
 
-    public ComboBox<Symbol> getCboMercado01() {
+    public ComboBox<ActiveSymbol> getCboMercado01() {
         return cboMercado01;
     }
 
-    public void setCboMercado01(ComboBox<Symbol> cboMercado01) {
+    public void setCboMercado01(ComboBox<ActiveSymbol> cboMercado01) {
         this.cboMercado01 = cboMercado01;
     }
 
@@ -1643,11 +1644,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op02 = tbvTransacoes_Op02;
     }
 
-    public ComboBox<Symbol> getCboMercado02() {
+    public ComboBox<ActiveSymbol> getCboMercado02() {
         return cboMercado02;
     }
 
-    public void setCboMercado02(ComboBox<Symbol> cboMercado02) {
+    public void setCboMercado02(ComboBox<ActiveSymbol> cboMercado02) {
         this.cboMercado02 = cboMercado02;
     }
 
@@ -1891,11 +1892,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op03 = tbvTransacoes_Op03;
     }
 
-    public ComboBox<Symbol> getCboMercado03() {
+    public ComboBox<ActiveSymbol> getCboMercado03() {
         return cboMercado03;
     }
 
-    public void setCboMercado03(ComboBox<Symbol> cboMercado03) {
+    public void setCboMercado03(ComboBox<ActiveSymbol> cboMercado03) {
         this.cboMercado03 = cboMercado03;
     }
 
@@ -2139,11 +2140,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op04 = tbvTransacoes_Op04;
     }
 
-    public ComboBox<Symbol> getCboMercado04() {
+    public ComboBox<ActiveSymbol> getCboMercado04() {
         return cboMercado04;
     }
 
-    public void setCboMercado04(ComboBox<Symbol> cboMercado04) {
+    public void setCboMercado04(ComboBox<ActiveSymbol> cboMercado04) {
         this.cboMercado04 = cboMercado04;
     }
 
@@ -2387,11 +2388,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op05 = tbvTransacoes_Op05;
     }
 
-    public ComboBox<Symbol> getCboMercado05() {
+    public ComboBox<ActiveSymbol> getCboMercado05() {
         return cboMercado05;
     }
 
-    public void setCboMercado05(ComboBox<Symbol> cboMercado05) {
+    public void setCboMercado05(ComboBox<ActiveSymbol> cboMercado05) {
         this.cboMercado05 = cboMercado05;
     }
 

@@ -25,7 +25,7 @@ public class Transaction {
     String low_barrier;
     Integer purchase_time;
     String stop_out;
-    Symbol symbol;
+    ActiveSymbol activeSymbol;
     String take_profit;
     Long transaction_id;
     Integer transaction_time;
@@ -163,16 +163,15 @@ public class Transaction {
     }
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    //@JoinColumn(name = "symbol_id")
-    public Symbol getSymbol() {
-        return symbol;
+    public ActiveSymbol getActiveSymbol() {
+        return activeSymbol;
     }
 
-    public void setSymbol(Symbol symbol) {
-        this.symbol = symbol;
+    public void setActiveSymbol(ActiveSymbol activeSymbol) {
+        this.activeSymbol = activeSymbol;
     }
 
-//    public void setSymbol(String symbol) {
+    //    public void setSymbol(String symbol) {
 //        this.symbol = Operacoes.getSymbol(symbol);
 //    }
 
@@ -219,7 +218,7 @@ public class Transaction {
                 ", low_barrier='" + low_barrier + '\'' +
                 ", purchase_time=" + purchase_time +
                 ", stop_out='" + stop_out + '\'' +
-                ", symbol=" + symbol +
+                ", activeSymbol=" + activeSymbol +
                 ", take_profit='" + take_profit + '\'' +
                 ", transaction_id=" + transaction_id +
                 ", transaction_time=" + transaction_time +

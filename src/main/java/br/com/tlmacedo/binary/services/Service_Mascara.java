@@ -13,6 +13,12 @@ public class Service_Mascara {
 
     private static String REGEX_PONTUACAO = "[ !\"$%&'()*+,-./:;_`{|}]";
 
+    public static int getNumberOfDecimal(BigDecimal bigDecimal) {
+        String string = bigDecimal.stripTrailingZeros().toPlainString();
+        int index = string.indexOf(".");
+        return index < 0 ? 0 : string.length() - index - 1;
+    }
+
     public static String getValorFormatado(Integer qtdDecimal, BigDecimal valor) {
         String mascara = String.format("%s.%0" + qtdDecimal.intValue() + "d", "###,###", 0);
         return new DecimalFormat(mascara).format(valor);//.replace(",", ";").replace(".", ",").replace(";", ".");

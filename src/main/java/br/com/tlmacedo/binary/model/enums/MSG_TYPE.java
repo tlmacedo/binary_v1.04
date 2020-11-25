@@ -12,7 +12,9 @@ public enum MSG_TYPE {
     PROPOSAL(3, "proposal"),
     BUY(4, "buy"),
     HISTORY(5, "history"),
-    TRANSACTION(6, "transaction");
+    TRANSACTION(6, "transaction"),
+    ACTIVE_SYMBOLS(7, "active_symbols");
+
 
     private Integer cod;
     private String descricao;

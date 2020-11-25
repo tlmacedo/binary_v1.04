@@ -16,7 +16,7 @@ public class Transacoes implements Serializable {
     public static final long serialVersionUID = 1L;
 
     ObjectProperty<ContaToken> contaToken = new SimpleObjectProperty<>();
-    ObjectProperty<Symbol> symbol = new SimpleObjectProperty<>();
+    ObjectProperty<ActiveSymbol> activeSymbol = new SimpleObjectProperty<>();
     LongProperty transaction_id = new SimpleLongProperty();
     LongProperty contract_id = new SimpleLongProperty();
     IntegerProperty dataHoraCompra = new SimpleIntegerProperty();
@@ -30,7 +30,7 @@ public class Transacoes implements Serializable {
     ObjectProperty<BigDecimal> stakeVenda = new SimpleObjectProperty<>();
     BooleanProperty consolidado = new SimpleBooleanProperty(false);
 
-    Integer symbolId;
+    Integer activeSymbolId;
     CONTRACT_TYPE contractTypeLastPriceProposal;
     String lastBarrier;
     StringBuilder stbContract_Type = new StringBuilder();
@@ -39,7 +39,7 @@ public class Transacoes implements Serializable {
 
     }
 
-    public Transacoes(Symbol symbol) {
+    public Transacoes(ActiveSymbol activeSymbol) {
 
 //        setSymbol(symbol);
 //        setSymbolId((int) (getSymbol().getId() - 1));
@@ -129,17 +129,17 @@ public class Transacoes implements Serializable {
     }
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "symbol_id", foreignKey = @ForeignKey(name = "fk_transacoes_symbol"), nullable = false)
-    public Symbol getSymbol() {
-        return symbol.get();
+    @JoinColumn(name = "activeSymbol_id", foreignKey = @ForeignKey(name = "fk_transacoes_activeSymbol"), nullable = false)
+    public ActiveSymbol getActiveSymbol() {
+        return activeSymbol.get();
     }
 
-    public ObjectProperty<Symbol> symbolProperty() {
-        return symbol;
+    public ObjectProperty<ActiveSymbol> activeSymbolProperty() {
+        return activeSymbol;
     }
 
-    public void setSymbol(Symbol symbol) {
-        this.symbol.set(symbol);
+    public void setActiveSymbol(ActiveSymbol activeSymbol) {
+        this.activeSymbol.set(activeSymbol);
     }
 
     @Column(nullable = false)
@@ -300,12 +300,12 @@ public class Transacoes implements Serializable {
     }
 
     @Transient
-    public Integer getSymbolId() {
-        return symbolId;
+    public Integer getActiveSymbolId() {
+        return activeSymbolId;
     }
 
-    public void setSymbolId(Integer symbolId) {
-        this.symbolId = symbolId;
+    public void setActiveSymbolId(Integer activeSymbolId) {
+        this.activeSymbolId = activeSymbolId;
     }
 
     @Transient
@@ -339,7 +339,7 @@ public class Transacoes implements Serializable {
     public String toString() {
         return "Transacoes{" +
                 "contaToken=" + contaToken +
-                ", symbol=" + symbol +
+                ", activeSymbol=" + activeSymbol +
                 ", transaction_id=" + transaction_id +
                 ", contract_id=" + contract_id +
                 ", dataHoraCompra=" + dataHoraCompra +
@@ -352,6 +352,10 @@ public class Transacoes implements Serializable {
                 ", stakeCompra=" + stakeCompra +
                 ", stakeVenda=" + stakeVenda +
                 ", consolidado=" + consolidado +
+                ", activeSymbolId=" + activeSymbolId +
+                ", contractTypeLastPriceProposal=" + contractTypeLastPriceProposal +
+                ", lastBarrier='" + lastBarrier + '\'' +
+                ", stbContract_Type=" + stbContract_Type +
                 '}';
     }
 }

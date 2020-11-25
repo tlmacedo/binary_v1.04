@@ -1,20 +1,20 @@
 package br.com.tlmacedo.binary.model.vo;
 
+import br.com.tlmacedo.binary.services.Service_Mascara;
 import javafx.beans.property.BooleanProperty;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 import java.math.BigDecimal;
 
 @Entity(name = "ActiveSymbol")
 @Table(name = "active_symbol")
 public class ActiveSymbol {
 
-    Boolean allow_forward_startingenum;
+    Long id;
+    Boolean allow_forward_starting;
     String display_name;
-    Boolean exchange_is_openenum;
-    Boolean is_trading_suspendedenum;
+    Boolean exchange_is_open;
+    Boolean is_trading_suspended;
     String market;
     String market_display_name;
     BigDecimal pip;
@@ -26,14 +26,26 @@ public class ActiveSymbol {
     public ActiveSymbol() {
     }
 
-    public Boolean getAllow_forward_startingenum() {
-        return allow_forward_startingenum;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public Long getId() {
+        return id;
     }
 
-    public void setAllow_forward_startingenum(Boolean allow_forward_startingenum) {
-        this.allow_forward_startingenum = allow_forward_startingenum;
+    public void setId(Long id) {
+        this.id = id;
     }
 
+    @Column(length = 1, nullable = false)
+    public Boolean getAllow_forward_starting() {
+        return allow_forward_starting;
+    }
+
+    public void setAllow_forward_starting(Boolean allow_forward_starting) {
+        this.allow_forward_starting = allow_forward_starting;
+    }
+
+    @Column(length = 120, unique = true, nullable = false)
     public String getDisplay_name() {
         return display_name;
     }
@@ -42,22 +54,25 @@ public class ActiveSymbol {
         this.display_name = display_name;
     }
 
-    public Boolean getExchange_is_openenum() {
-        return exchange_is_openenum;
+    @Column(length = 1, nullable = false)
+    public Boolean getExchange_is_open() {
+        return exchange_is_open;
     }
 
-    public void setExchange_is_openenum(Boolean exchange_is_openenum) {
-        this.exchange_is_openenum = exchange_is_openenum;
+    public void setExchange_is_open(Boolean exchange_is_open) {
+        this.exchange_is_open = exchange_is_open;
     }
 
-    public Boolean getIs_trading_suspendedenum() {
-        return is_trading_suspendedenum;
+    @Column(length = 1, nullable = false)
+    public Boolean getIs_trading_suspended() {
+        return is_trading_suspended;
     }
 
-    public void setIs_trading_suspendedenum(Boolean is_trading_suspendedenum) {
-        this.is_trading_suspendedenum = is_trading_suspendedenum;
+    public void setIs_trading_suspended(Boolean is_trading_suspended) {
+        this.is_trading_suspended = is_trading_suspended;
     }
 
+    @Column(length = 80, nullable = false)
     public String getMarket() {
         return market;
     }
@@ -66,6 +81,7 @@ public class ActiveSymbol {
         this.market = market;
     }
 
+    @Column(length = 80, nullable = false)
     public String getMarket_display_name() {
         return market_display_name;
     }
@@ -74,6 +90,7 @@ public class ActiveSymbol {
         this.market_display_name = market_display_name;
     }
 
+    @Column(length = 19, scale = 5, nullable = false)
     public BigDecimal getPip() {
         return pip;
     }
@@ -82,6 +99,7 @@ public class ActiveSymbol {
         this.pip = pip;
     }
 
+    @Column(length = 120, nullable = false)
     public String getSubmarket() {
         return submarket;
     }
@@ -90,6 +108,7 @@ public class ActiveSymbol {
         this.submarket = submarket;
     }
 
+    @Column(length = 120, nullable = false)
     public String getSubmarket_display_name() {
         return submarket_display_name;
     }
@@ -98,7 +117,7 @@ public class ActiveSymbol {
         this.submarket_display_name = submarket_display_name;
     }
 
-    @Id
+    @Column(length = 60, nullable = false, unique = true)
     public String getSymbol() {
         return symbol;
     }
@@ -107,6 +126,7 @@ public class ActiveSymbol {
         this.symbol = symbol;
     }
 
+    @Column(length = 60, nullable = false)
     public String getSymbol_type() {
         return symbol_type;
     }
@@ -117,11 +137,12 @@ public class ActiveSymbol {
 
     @Override
     public String toString() {
-        return "Mercado{" +
-                "allow_forward_startingenum=" + allow_forward_startingenum +
+        return "ActiveSymbol{" +
+                "id=" + id +
+                ", allow_forward_starting=" + allow_forward_starting +
                 ", display_name='" + display_name + '\'' +
-                ", exchange_is_openenum=" + exchange_is_openenum +
-                ", is_trading_suspendedenum=" + is_trading_suspendedenum +
+                ", exchange_is_open=" + exchange_is_open +
+                ", is_trading_suspended=" + is_trading_suspended +
                 ", market='" + market + '\'' +
                 ", market_display_name='" + market_display_name + '\'' +
                 ", pip=" + pip +
