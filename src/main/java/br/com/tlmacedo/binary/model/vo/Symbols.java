@@ -1,20 +1,22 @@
 package br.com.tlmacedo.binary.model.vo;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Symbols {
+public class Symbols  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
-    List<ActiveSymbol> active_symbols = new ArrayList<>();
+    List<Symbol> active_symbols = new ArrayList<>();
 
     public Symbols() {
     }
 
-    public List<ActiveSymbol> getActive_symbols() {
+    public List<Symbol> getActive_symbols() {
         return active_symbols;
     }
 
-    public void setActive_symbols(List<ActiveSymbol> active_symbols) {
+    public void setActive_symbols(List<Symbol> active_symbols) {
         this.active_symbols = active_symbols;
     }
 

@@ -1,14 +1,11 @@
 package br.com.tlmacedo.binary.model.vo;
 
-import br.com.tlmacedo.binary.controller.Operacoes;
 import br.com.tlmacedo.binary.model.enums.CONTRACT_TYPE;
-import br.com.tlmacedo.binary.services.Util_Json;
 import javafx.beans.property.*;
 
 import javax.persistence.*;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 @Entity(name = "Transacoes")
 @Table(name = "transacoes")
@@ -16,7 +13,7 @@ public class Transacoes implements Serializable {
     public static final long serialVersionUID = 1L;
 
     ObjectProperty<ContaToken> contaToken = new SimpleObjectProperty<>();
-    ObjectProperty<ActiveSymbol> activeSymbol = new SimpleObjectProperty<>();
+    ObjectProperty<Symbol> activeSymbol = new SimpleObjectProperty<>();
     LongProperty transaction_id = new SimpleLongProperty();
     LongProperty contract_id = new SimpleLongProperty();
     IntegerProperty dataHoraCompra = new SimpleIntegerProperty();
@@ -39,7 +36,7 @@ public class Transacoes implements Serializable {
 
     }
 
-    public Transacoes(ActiveSymbol activeSymbol) {
+    public Transacoes(Symbol symbol) {
 
 //        setSymbol(symbol);
 //        setSymbolId((int) (getSymbol().getId() - 1));
@@ -130,16 +127,16 @@ public class Transacoes implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "activeSymbol_id", foreignKey = @ForeignKey(name = "fk_transacoes_activeSymbol"), nullable = false)
-    public ActiveSymbol getActiveSymbol() {
+    public Symbol getActiveSymbol() {
         return activeSymbol.get();
     }
 
-    public ObjectProperty<ActiveSymbol> activeSymbolProperty() {
+    public ObjectProperty<Symbol> activeSymbolProperty() {
         return activeSymbol;
     }
 
-    public void setActiveSymbol(ActiveSymbol activeSymbol) {
-        this.activeSymbol.set(activeSymbol);
+    public void setActiveSymbol(Symbol symbol) {
+        this.activeSymbol.set(symbol);
     }
 
     @Column(nullable = false)

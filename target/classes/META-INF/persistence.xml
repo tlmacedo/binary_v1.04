@@ -6,7 +6,7 @@
     <persistence-unit name="binary_PU" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
-        <class>br.com.tlmacedo.binary.model.vo.ActiveSymbol</class>
+        <class>br.com.tlmacedo.binary.model.vo.Symbol</class>
         <class>br.com.tlmacedo.binary.model.vo.ContaToken</class>
         <class>br.com.tlmacedo.binary.model.vo.HistoricoDeTicks</class>
         <class>br.com.tlmacedo.binary.model.vo.Symbol</class>

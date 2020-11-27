@@ -1,24 +1,31 @@
 package br.com.tlmacedo.binary.controller;
 
 import br.com.tlmacedo.binary.controller.estrategias.RoboEstrategia;
-import br.com.tlmacedo.binary.model.dao.ActiveSymbolDAO;
 import br.com.tlmacedo.binary.model.dao.ContaTokenDAO;
+import br.com.tlmacedo.binary.model.dao.SymbolDAO;
 import br.com.tlmacedo.binary.model.dao.TransacoesDAO;
 import br.com.tlmacedo.binary.model.dao.TransactionDAO;
 import br.com.tlmacedo.binary.model.enums.ROBOS;
+import br.com.tlmacedo.binary.model.enums.TICK_STYLE;
 import br.com.tlmacedo.binary.model.vo.*;
 import br.com.tlmacedo.binary.services.Service_Alert;
+import br.com.tlmacedo.binary.services.Util_Json;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.Initializable;
+import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.chart.*;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
@@ -26,12 +33,14 @@ import java.math.RoundingMode;
 import java.net.URL;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.TimeZone;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static br.com.tlmacedo.binary.interfaces.Constants.DTF_MINUTOS_SEGUNDOS;
+import static br.com.tlmacedo.binary.interfaces.Constants.*;
 
 public class Operacoes implements Initializable {
 
@@ -39,7 +48,7 @@ public class Operacoes implements Initializable {
      * Objetos DAO conecta com banco de dados
      */
     //** Banco de Dados **
-    static ActiveSymbolDAO activeSymbolDAO = new ActiveSymbolDAO();
+    static SymbolDAO symbolDAO = new SymbolDAO();
     static ContaTokenDAO contaTokenDAO = new ContaTokenDAO();
     static TransacoesDAO transacoesDAO = new TransacoesDAO();
     static TransactionDAO transactionDAO = new TransactionDAO();
@@ -49,15 +58,12 @@ public class Operacoes implements Initializable {
      * Identificação de volatilidades
      */
     //** Variaveis de identificacoes das volatilidades
-    static final ObservableList<ActiveSymbol> activeSymbolObservableList =
-            FXCollections.observableArrayList(getActiveSymbolDAO()
-                    .getAll(ActiveSymbol.class, null, null));
-    static final Integer QTD_OPERADORES = 5;
-    static final Integer OPERADOR_1 = 0;
-    static final Integer OPERADOR_2 = 1;
-    static final Integer OPERADOR_3 = 2;
-    static final Integer OPERADOR_4 = 3;
-    static final Integer OPERADOR_5 = 4;
+    static final ObservableList<Symbol> SYMBOL_OBSERVABLE_LIST =
+            FXCollections.observableArrayList(getSymbolDAO().getAll(Symbol.class, null, null));
+    static ObservableList<Operador> operadorObservableList =
+            FXCollections.observableArrayList(new Operador(0L), new Operador(1L), new Operador(2L),
+                    new Operador(3L), new Operador(4L));
+
     /**
      * Contas corretora
      */
@@ -76,25 +82,26 @@ public class Operacoes implements Initializable {
      */
     //** informações para graficos **
     static IntegerProperty graficoQtdTicksAnalise = new SimpleIntegerProperty(1000);
-    static IntegerProperty graficoQtdTicks = new SimpleIntegerProperty(100);
+    //    static IntegerProperty graficoQtdTicks = new SimpleIntegerProperty(100);
+    static IntegerProperty graficoQtdTicks = new SimpleIntegerProperty(2);
 
-    Text[][] graficoTxtLegendaDigito_R = new Text[QTD_OPERADORES][10];
+    Text[][] graficoTxtLegendaDigito_R = new Text[getOperadorObservableList().size()][10];
 
     //** gráficos em barras **
-    XYChart.Series<String, Number>[] graficoBarrasVolatilidade_R = new XYChart.Series[QTD_OPERADORES];
-    ObservableList<Data<String, Number>>[] graficoBarrasListDataDigitos_R = new ObservableList[QTD_OPERADORES];
-    static ObservableList<LongProperty>[] graficoBarrasListQtdDigito_R = new ObservableList[QTD_OPERADORES];
+    XYChart.Series<String, Number>[] graficoBarrasVolatilidade_R = new XYChart.Series[getOperadorObservableList().size()];
+    ObservableList<Data<String, Number>>[] graficoBarrasListDataDigitos_R = new ObservableList[getOperadorObservableList().size()];
+    static ObservableList<LongProperty>[] graficoBarrasListQtdDigito_R = new ObservableList[getOperadorObservableList().size()];
 
 
     //** graficos em linha **
-    XYChart.Series<String, Number>[] graficoLinhasVolatilidade_R = new XYChart.Series[QTD_OPERADORES];
-    ObservableList<Data<String, Number>>[] graficoLinhasListDataDigitos_R = new ObservableList[QTD_OPERADORES];
-    static ObservableList<HistoricoDeTicks>[] graficoLinhasListQtdDigito_R = new ObservableList[QTD_OPERADORES];
+    XYChart.Series<String, Number>[] graficoLinhasVolatilidade_R = new XYChart.Series[getOperadorObservableList().size()];
+    ObservableList<Data<String, Number>>[] graficoLinhasListDataDigitos_R = new ObservableList[getOperadorObservableList().size()];
+    static ObservableList<HistoricoDeTicks>[] graficoLinhasListQtdDigito_R = new ObservableList[getOperadorObservableList().size()];
 
     //** gráficos MACD **
-    XYChart.Series<String, Number>[] graficoMACDVolatilidade_R = new XYChart.Series[QTD_OPERADORES];
-    ObservableList<Data<String, Number>>[] graficoMACDListDataDigitos_R = new ObservableList[QTD_OPERADORES];
-    static ObservableList<HistoricoDeTicks>[] graficoMACDListQtdDigito_R = new ObservableList[QTD_OPERADORES];
+    XYChart.Series<String, Number>[] graficoMACDVolatilidade_R = new XYChart.Series[getOperadorObservableList().size()];
+    ObservableList<Data<String, Number>>[] graficoMACDListDataDigitos_R = new ObservableList[getOperadorObservableList().size()];
+    static ObservableList<HistoricoDeTicks>[] graficoMACDListQtdDigito_R = new ObservableList[getOperadorObservableList().size()];
 
 
     /**
@@ -119,21 +126,21 @@ public class Operacoes implements Initializable {
      * Variaveis de informações para operadores
      */
     //** Variaveis **
-    static BooleanProperty[] operadorAtivo = new BooleanProperty[QTD_OPERADORES];
-    static BooleanProperty[] operadorCompraAutorizada = new BooleanProperty[QTD_OPERADORES];
-    static BooleanProperty[] operadorNegociando = new BooleanProperty[QTD_OPERADORES];
-    static BooleanProperty[] tickSubindo = new BooleanProperty[QTD_OPERADORES];
-    static ObjectProperty<Tick>[] ultimoTick = new ObjectProperty[QTD_OPERADORES];
-    static IntegerProperty[] digitoMaiorQuantidade = new IntegerProperty[QTD_OPERADORES];
-    static IntegerProperty[] digitoMenorQuantidade = new IntegerProperty[QTD_OPERADORES];
-    static StringProperty[] informacaoDetalhe01 = new StringProperty[QTD_OPERADORES];
-    static StringProperty[] informacaoValor01 = new StringProperty[QTD_OPERADORES];
-    static StringProperty[] informacaoDetalhe02 = new StringProperty[QTD_OPERADORES];
-    static StringProperty[] informacaoValor02 = new StringProperty[QTD_OPERADORES];
+    static BooleanProperty[] operadorAtivo = new BooleanProperty[getOperadorObservableList().size()];
+    static BooleanProperty[] operadorCompraAutorizada = new BooleanProperty[getOperadorObservableList().size()];
+    static BooleanProperty[] operadorNegociando = new BooleanProperty[getOperadorObservableList().size()];
+    static BooleanProperty[] tickSubindo = new BooleanProperty[getOperadorObservableList().size()];
+    static ObjectProperty<Tick>[] ultimoTick = new ObjectProperty[getOperadorObservableList().size()];
+    static IntegerProperty[] digitoMaiorQuantidade = new IntegerProperty[getOperadorObservableList().size()];
+    static IntegerProperty[] digitoMenorQuantidade = new IntegerProperty[getOperadorObservableList().size()];
+    static StringProperty[] informacaoDetalhe01 = new StringProperty[getOperadorObservableList().size()];
+    static StringProperty[] informacaoValor01 = new StringProperty[getOperadorObservableList().size()];
+    static StringProperty[] informacaoDetalhe02 = new StringProperty[getOperadorObservableList().size()];
+    static StringProperty[] informacaoValor02 = new StringProperty[getOperadorObservableList().size()];
     //** Listas **
-    static ObservableList<HistoricoDeTicks>[] historicoDeTicksObservableList = new ObservableList[QTD_OPERADORES];
-    static ObservableList<HistoricoDeTicks>[] HistoricoDeTicksAnaliseObservableList = new ObservableList[QTD_OPERADORES];
-    static ObservableList<Transaction>[] transactionObservableList = new ObservableList[QTD_OPERADORES];
+    static ObservableList<HistoricoDeTicks>[] historicoDeTicksObservableList = new ObservableList[getOperadorObservableList().size()];
+    static ObservableList<HistoricoDeTicks>[] HistoricoDeTicksAnaliseObservableList = new ObservableList[getOperadorObservableList().size()];
+    static ObservableList<Transaction>[] transactionObservableList = new ObservableList[getOperadorObservableList().size()];
     static ObservableList<Transacoes> transacoesObservableList = FXCollections.observableArrayList();
 
     /**
@@ -208,7 +215,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op01;
     public Label lblLucroPorc_Op01;
     public TableView<Transacoes> tbvTransacoes_Op01;
-    public ComboBox<ActiveSymbol> cboMercado01;
+    public ComboBox<Symbol> cboMercado01;
     public CheckBox chkAtivo_Op01;
     public Label tpnLblLegendaExecucoes_Op01;
     public Label tpnLblExecucoes_Op01;
@@ -241,7 +248,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op02;
     public Label lblLucroPorc_Op02;
     public TableView<Transacoes> tbvTransacoes_Op02;
-    public ComboBox<ActiveSymbol> cboMercado02;
+    public ComboBox<Symbol> cboMercado02;
     public CheckBox chkAtivo_Op02;
     public Label tpnLblLegendaExecucoes_Op02;
     public Label tpnLblExecucoes_Op02;
@@ -274,7 +281,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op03;
     public Label lblLucroPorc_Op03;
     public TableView<Transacoes> tbvTransacoes_Op03;
-    public ComboBox<ActiveSymbol> cboMercado03;
+    public ComboBox<Symbol> cboMercado03;
     public CheckBox chkAtivo_Op03;
     public Label tpnLblLegendaExecucoes_Op03;
     public Label tpnLblExecucoes_Op03;
@@ -307,7 +314,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op04;
     public Label lblLucroPorc_Op04;
     public TableView<Transacoes> tbvTransacoes_Op04;
-    public ComboBox<ActiveSymbol> cboMercado04;
+    public ComboBox<Symbol> cboMercado04;
     public CheckBox chkAtivo_Op04;
     public Label tpnLblLegendaExecucoes_Op04;
     public Label tpnLblExecucoes_Op04;
@@ -340,7 +347,7 @@ public class Operacoes implements Initializable {
     public Label lblLucro_Op05;
     public Label lblLucroPorc_Op05;
     public TableView<Transacoes> tbvTransacoes_Op05;
-    public ComboBox<ActiveSymbol> cboMercado05;
+    public ComboBox<Symbol> cboMercado05;
     public CheckBox chkAtivo_Op05;
     public Label tpnLblLegendaExecucoes_Op05;
     public Label tpnLblExecucoes_Op05;
@@ -362,6 +369,8 @@ public class Operacoes implements Initializable {
 
         carregarVariaveisObjetos();
         carregarObjetos();
+        carregarAcoesObjetos();
+
     }
 
     private Task getTaskWsBinary() {
@@ -374,7 +383,7 @@ public class Operacoes implements Initializable {
                     try {
                         if (n) {
                             //solicitarActiveSymbols();
-
+                            monitorarTicks();
 
                         } else {
                             getBtnStop().fire();
@@ -398,14 +407,34 @@ public class Operacoes implements Initializable {
      * <p>
      */
 
-    private void carregarObjetos() {
-        getCboConta().setItems(getContaTokenDAO().getAll(ContaToken.class, "ativo=1", null)
-                .stream().collect(Collectors.toCollection(FXCollections::observableArrayList)));
-    }
-
     private void carregarVariaveisObjetos() {
 
-        for (int operadorId = 0; operadorId < QTD_OPERADORES; operadorId++) {
+        for (int i = 0; i < getOperadorObservableList().size(); i++) {
+            int operadorId = i;
+            getOperadorObservableList().get(operadorId).mercadoProperty().bind(Bindings.createObjectBinding(() -> {
+                        switch (operadorId) {
+                            case 0 -> {
+                                return getCboMercado01().getValue();
+                            }
+                            case 1 -> {
+                                return getCboMercado02().getValue();
+                            }
+                            case 2 -> {
+                                return getCboMercado03().getValue();
+                            }
+                            case 3 -> {
+                                return getCboMercado04().getValue();
+                            }
+                            case 4 -> {
+                                return getCboMercado05().getValue();
+                            }
+                            default -> {
+                                return null;
+                            }
+                        }
+                    }, getCboMercado01().valueProperty(), getCboMercado02().valueProperty(),
+                    getCboMercado03().valueProperty(), getCboMercado04().valueProperty(),
+                    getCboMercado05().valueProperty()));
             getOperadorAtivo()[operadorId] = new SimpleBooleanProperty(false);
             getOperadorCompraAutorizada()[operadorId] = new SimpleBooleanProperty(false);
             getOperadorNegociando()[operadorId] = new SimpleBooleanProperty(false);
@@ -429,6 +458,31 @@ public class Operacoes implements Initializable {
 
     }
 
+    private void carregarObjetos() {
+
+        getCboConta().setItems(getContaTokenDAO().getAll(ContaToken.class, "ativo=1", null)
+                .stream().collect(Collectors.toCollection(FXCollections::observableArrayList)));
+        ObservableList<Symbol> Mercados = getSymbolDAO().getAll(Symbol.class, null, null).stream()
+                .collect(Collectors.toCollection(FXCollections::observableArrayList));
+        getCboMercado01().setItems(Mercados);
+        getCboMercado02().setItems(Mercados);
+        getCboMercado03().setItems(Mercados);
+        getCboMercado04().setItems(Mercados);
+        getCboMercado05().setItems(Mercados);
+
+    }
+
+    private void carregarAcoesObjetos() {
+
+        getCboMercado01().valueProperty().addListener((ov, o, n) -> {
+            solicitarTicks(getOperadorObservableList().get(0));
+        });
+        getCboMercado02().valueProperty().addListener((ov, o, n) -> {
+            solicitarTicks(getOperadorObservableList().get(1));
+        });
+
+    }
+
     private void conectarObjetosEmVariaveis() {
 
     }
@@ -443,13 +497,38 @@ public class Operacoes implements Initializable {
 
     private void solicitarActiveSymbols() {
 
-        String jsonActiveSymbols = new ActiveSymbols().toString();
+        String jsonActiveSymbols = Util_Json.getJson_from_Object(new ActiveSymbols());
         getWsClient().getMyWebSocket().send(jsonActiveSymbols);
 
     }
 
+    private void solicitarTicks(Operador operador) {
+
+        Integer tempoVela = null;
+        Symbol symbol = getActiveSymbolObservableList().stream()
+                .filter(activeSymbol -> activeSymbol.getId().intValue() == operador.getMercado().getId())
+                .findFirst().get();
+        Passthrough passthrough = new Passthrough();
+        passthrough.setOperador(operador.idProperty().getValue().intValue());
+        passthrough.setSymbol(symbol);
+        passthrough.setMensagem("testando para ver o que se dá!");
+
+        for (TICK_STYLE style : TICK_STYLE.values()) {
+            passthrough.setTyper(style.toString());
+            String jsonHistory = Util_Json.getJson_from_Object(new TicksHistory(symbol.getSymbol(),
+                    getGraficoQtdTicks(), style, tempoVela, passthrough));
+            if (tempoVela == null) jsonHistory = jsonHistory.replace(",\"granularity\":null", "");
+            if (passthrough == null) jsonHistory = jsonHistory.replace(",\"passthrough\":null", "");
+            //if (style == TICK_STYLE.CANDLES) jsonHistory = jsonHistory.replace(",\"subscribe\":1", "");
+            if (style == TICK_STYLE.TICKS) graficoEmBarras(operador.idProperty().getValue().intValue());
+            System.out.printf("jsonHistory: %s\n", jsonHistory);
+            getWsClient().getMyWebSocket().send(jsonHistory);
+        }
+    }
+
 
     /**
+     * Comandos diversos
      * <p>
      * <p>
      * <p>
@@ -457,6 +536,13 @@ public class Operacoes implements Initializable {
      * <p>
      * <p>
      */
+
+    public static Integer getSymbolId(String symbol) {
+        for (Symbol activeSymbol : getActiveSymbolObservableList())
+            if (symbol.equals(activeSymbol.getSymbol()))
+                return activeSymbol.getId().intValue();
+        return null;
+    }
 
     /**
      * Atualizações carregamentos e manipulações com graficos.
@@ -490,28 +576,33 @@ public class Operacoes implements Initializable {
             });
         }
 
-        if (operadorId.equals(getOperador1())) {
-            getyAxisBarras_Op01().setUpperBound(25);
-            getGraficoBarras_Op01().getData().add(getGraficoBarrasVolatilidade_R()[getOperador1()]);
-            getGraficoBarras_Op01().setVisible(true);
-        } else if (operadorId.equals(getOperador2())) {
-            getyAxisBarras_Op02().setUpperBound(25);
-            getGraficoBarras_Op02().getData().add(getGraficoBarrasVolatilidade_R()[getOperador2()]);
-            getGraficoBarras_Op02().setVisible(true);
-        } else if (operadorId.equals(getOperador3())) {
-            getyAxisBarras_Op03().setUpperBound(25);
-            getGraficoBarras_Op03().getData().add(getGraficoBarrasVolatilidade_R()[getOperador3()]);
-            getGraficoBarras_Op03().setVisible(true);
-        } else if (operadorId.equals(getOperador4())) {
-            getyAxisBarras_Op04().setUpperBound(25);
-            getGraficoBarras_Op04().getData().add(getGraficoBarrasVolatilidade_R()[getOperador4()]);
-            getGraficoBarras_Op04().setVisible(true);
-        } else if (operadorId.equals(getOperador5())) {
-            getyAxisBarras_Op05().setUpperBound(25);
-            getGraficoBarras_Op05().getData().add(getGraficoBarrasVolatilidade_R()[getOperador5()]);
-            getGraficoBarras_Op05().setVisible(true);
+        switch (operadorId) {
+            case 0 -> {
+                getyAxisBarras_Op01().setUpperBound(25);
+                getGraficoBarras_Op01().getData().add(getGraficoBarrasVolatilidade_R()[0]);
+                getGraficoBarras_Op01().setVisible(true);
+            }
+            case 1 -> {
+                getyAxisBarras_Op02().setUpperBound(25);
+                getGraficoBarras_Op02().getData().add(getGraficoBarrasVolatilidade_R()[1]);
+                getGraficoBarras_Op02().setVisible(true);
+            }
+            case 2 -> {
+                getyAxisBarras_Op03().setUpperBound(25);
+                getGraficoBarras_Op03().getData().add(getGraficoBarrasVolatilidade_R()[2]);
+                getGraficoBarras_Op03().setVisible(true);
+            }
+            case 3 -> {
+                getyAxisBarras_Op04().setUpperBound(25);
+                getGraficoBarras_Op04().getData().add(getGraficoBarrasVolatilidade_R()[3]);
+                getGraficoBarras_Op04().setVisible(true);
+            }
+            case 4 -> {
+                getyAxisBarras_Op05().setUpperBound(25);
+                getGraficoBarras_Op05().getData().add(getGraficoBarrasVolatilidade_R()[4]);
+                getGraficoBarras_Op05().setVisible(true);
+            }
         }
-
     }
 
     private void graficoEmLinhas(Integer operadorId) {
@@ -535,28 +626,135 @@ public class Operacoes implements Initializable {
         });
 
 
-        if (operadorId.equals(getOperador1())) {
-            getyAxisLinhas_Op01().setUpperBound(25);
-            getGraficoLinhas_Op01().getData().add(getGraficoLinhasVolatilidade_R()[getOperador1()]);
-            getGraficoLinhas_Op01().setVisible(true);
-        } else if (operadorId.equals(getOperador2())) {
-            getyAxisLinhas_Op02().setUpperBound(25);
-            getGraficoLinhas_Op02().getData().add(getGraficoLinhasVolatilidade_R()[getOperador2()]);
-            getGraficoLinhas_Op02().setVisible(true);
-        } else if (operadorId.equals(getOperador3())) {
-            getyAxisLinhas_Op03().setUpperBound(25);
-            getGraficoLinhas_Op03().getData().add(getGraficoLinhasVolatilidade_R()[getOperador3()]);
-            getGraficoLinhas_Op03().setVisible(true);
-        } else if (operadorId.equals(getOperador4())) {
-            getyAxisLinhas_Op04().setUpperBound(25);
-            getGraficoLinhas_Op04().getData().add(getGraficoLinhasVolatilidade_R()[getOperador4()]);
-            getGraficoLinhas_Op04().setVisible(true);
-        } else if (operadorId.equals(getOperador5())) {
-            getyAxisLinhas_Op05().setUpperBound(25);
-            getGraficoLinhas_Op05().getData().add(getGraficoLinhasVolatilidade_R()[getOperador5()]);
-            getGraficoLinhas_Op05().setVisible(true);
+        switch (operadorId) {
+            case 0 -> {
+                getyAxisLinhas_Op01().setUpperBound(25);
+                getGraficoLinhas_Op01().getData().add(getGraficoLinhasVolatilidade_R()[0]);
+                getGraficoLinhas_Op01().setVisible(true);
+            }
+            case 1 -> {
+                getyAxisLinhas_Op02().setUpperBound(25);
+                getGraficoLinhas_Op02().getData().add(getGraficoLinhasVolatilidade_R()[1]);
+                getGraficoLinhas_Op02().setVisible(true);
+            }
+            case 2 -> {
+                getyAxisLinhas_Op03().setUpperBound(25);
+                getGraficoLinhas_Op03().getData().add(getGraficoLinhasVolatilidade_R()[2]);
+                getGraficoLinhas_Op03().setVisible(true);
+            }
+            case 3 -> {
+                getyAxisLinhas_Op04().setUpperBound(25);
+                getGraficoLinhas_Op04().getData().add(getGraficoLinhasVolatilidade_R()[3]);
+                getGraficoLinhas_Op04().setVisible(true);
+            }
+            case 4 -> {
+                getyAxisLinhas_Op05().setUpperBound(25);
+                getGraficoLinhas_Op05().getData().add(getGraficoLinhasVolatilidade_R()[4]);
+                getGraficoLinhas_Op05().setVisible(true);
+            }
         }
 
+    }
+
+
+    private void displayLabelForData(XYChart.Data<String, Number> data, Text text) {
+        Platform.runLater(() -> {
+            if (data == null || text == null) return;
+            final Node node = data.getNode();
+            if (node == null) return;
+            ((Group) node.getParent()).getChildren().add(text);
+            node.boundsInParentProperty().addListener((ov, oldBounds, bounds) -> {
+                text.setLayoutX(Math.round(bounds.getMinX() + bounds.getWidth() / 2 - 6.));
+                text.setLayoutY(Math.round(bounds.getMinY() - 12. * 0.5));
+                text.setFill(Color.WHITE);
+            });
+        });
+    }
+
+    private void atualizaCoresGrafico(Integer operadorId) {
+        for (int digito = 0; digito < 10; digito++) {
+            if (getGraficoBarrasListQtdDigito_R()[operadorId].get(digito).getValue().intValue() >= getDigitoMaiorQuantidade()[operadorId].getValue())
+                getGraficoBarrasListDataDigitos_R()[operadorId].get(digito).getNode().setStyle(STYLE_GRAF_BARRAS_DIGITO_MAIOR);
+            else if (getGraficoBarrasListQtdDigito_R()[operadorId].get(digito).getValue().intValue() <= getDigitoMenorQuantidade()[operadorId].getValue())
+                getGraficoBarrasListDataDigitos_R()[operadorId].get(digito).getNode().setStyle(STYLE_GRAF_BARRAS_DIGITO_MENOR);
+            else
+                getGraficoBarrasListDataDigitos_R()[operadorId].get(digito).getNode().setStyle(STYLE_GRAF_BARRAS_DEFAULT);
+        }
+    }
+
+    /**
+     * Monitorar retornos do WebService
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     * <p>
+     */
+
+    private void monitorarTicks() {
+        for (int i = 0; i < getOperadorObservableList().size(); i++) {
+            int operadorId = i;
+            getHistoricoDeTicksObservableList()[operadorId].addListener((ListChangeListener<? super HistoricoDeTicks>) c -> {
+                while (c.next())
+//            getUltimoTick()[operadorId].addListener((ov, o, n) -> {
+                Platform.runLater(() -> {
+                    Map<Integer, Long> vlrDigitos = getHistoricoDeTicksObservableList()[operadorId].stream()
+                            .map(HistoricoDeTicks::getUltimoDigito)
+                            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+                    getDigitoMenorQuantidade()[operadorId].setValue(Collections.min(vlrDigitos.values()));
+                    getDigitoMaiorQuantidade()[operadorId].setValue(Collections.max(vlrDigitos.values()));
+
+                    for (int digito = 0; digito < 10; digito++) {
+                        getGraficoBarrasListQtdDigito_R()[operadorId].get(digito).setValue(
+                                vlrDigitos.containsKey(digito) ? vlrDigitos.get(digito) : 0L);
+                        if (!vlrDigitos.containsKey(digito))
+                            getDigitoMenorQuantidade()[operadorId].setValue(0);
+                    }
+                    if (getHistoricoDeTicksObservableList()[operadorId].size() > 1)
+                        getTickSubindo()[operadorId].setValue(
+                                getHistoricoDeTicksObservableList()[operadorId].get(0).getPrice()
+                                        .compareTo(getHistoricoDeTicksObservableList()[operadorId].get(1).getPrice()) >= 0);
+
+                    //Transacoes transacoesTemp;
+                    //                    if (getTransacoesObservableList().size() > 0
+                    //                            && (transacoesTemp = getTransacoesObservableList().stream()
+                    //                            .filter(transacoes -> transacoes.getSymbol().getId() == symbolId + 1
+                    //                                    && (transacoes.getTickCompra() == null
+                    //                                    || transacoes.getTickVenda() == null))
+                    //                            .findFirst().orElse(null)) != null) {
+                    //                        int index = getTransacoesObservableList().indexOf(transacoesTemp);
+                    //                        try {
+                    //                            if (transacoesTemp.getTickCompra() == null) {
+                    //                                transacoesTemp.setTickCompra(getHistoricoDeTicksGraficoObservableList()[symbolId].stream()
+                    //                                        .filter(historicoDeTicks -> historicoDeTicks.getTime() >= transacoesTemp.getDataHoraCompra())
+                    //                                        .findFirst().get().getPrice());
+                    //                            } else {
+                    //                                String contrato = transacoesTemp.getContract_type().toLowerCase();
+                    //                                transacoesTemp.setTickVenda(getHistoricoDeTicksGraficoObservableList()[symbolId].stream()
+                    //                                        .filter(historicoDeTicks -> {
+                    //                                            if (contrato.contains("call") || contrato.contains("put"))
+                    //                                                return historicoDeTicks.getTime() > transacoesTemp.getDataHoraExpiry();
+                    //                                            return historicoDeTicks.getTime() >= transacoesTemp.getDataHoraExpiry();
+                    //                                        }).sorted(Comparator.comparing(HistoricoDeTicks::getTime))
+                    //                                        .findFirst().get().getPrice());
+                    //                                if (transacoesTemp.getTickCompra() != null && transacoesTemp.getTickVenda() != null) {
+                    //                                    getTransacoesDAO().merger(transacoesTemp);
+                    //                                }
+                    //                            }
+                    //                        } catch (Exception ex) {
+                    //                            if (!(ex instanceof NullPointerException) && !(ex instanceof NoSuchElementException))
+                    //                                ex.printStackTrace();
+                    //                        } finally {
+                    //                            getTransacoesObservableList().set(index, transacoesTemp);
+                    //                        }
+                    //                    }
+
+                    atualizaCoresGrafico(operadorId);
+                });
+            });
+        }
     }
 
     /**
@@ -568,12 +766,16 @@ public class Operacoes implements Initializable {
      * <p>
      */
 
-    public static ActiveSymbolDAO getActiveSymbolDAO() {
-        return activeSymbolDAO;
+    public static SymbolDAO getSymbolDAO() {
+        return symbolDAO;
     }
 
-    public static void setActiveSymbolDAO(ActiveSymbolDAO activeSymbolDAO) {
-        Operacoes.activeSymbolDAO = activeSymbolDAO;
+    public static void setSymbolDAO(SymbolDAO symbolDAO) {
+        Operacoes.symbolDAO = symbolDAO;
+    }
+
+    public static ObservableList<Symbol> getSymbolObservableList() {
+        return SYMBOL_OBSERVABLE_LIST;
     }
 
     public static ContaTokenDAO getContaTokenDAO() {
@@ -600,32 +802,8 @@ public class Operacoes implements Initializable {
         Operacoes.transactionDAO = transactionDAO;
     }
 
-    public static ObservableList<ActiveSymbol> getActiveSymbolObservableList() {
-        return activeSymbolObservableList;
-    }
-
-    public static Integer getQtdOperadores() {
-        return QTD_OPERADORES;
-    }
-
-    public static Integer getOperador1() {
-        return OPERADOR_1;
-    }
-
-    public static Integer getOperador2() {
-        return OPERADOR_2;
-    }
-
-    public static Integer getOperador3() {
-        return OPERADOR_3;
-    }
-
-    public static Integer getOperador4() {
-        return OPERADOR_4;
-    }
-
-    public static Integer getOperador5() {
-        return OPERADOR_5;
+    public static ObservableList<Symbol> getActiveSymbolObservableList() {
+        return SYMBOL_OBSERVABLE_LIST;
     }
 
     public static ContaToken getContaToken() {
@@ -1396,11 +1574,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op01 = tbvTransacoes_Op01;
     }
 
-    public ComboBox<ActiveSymbol> getCboMercado01() {
+    public ComboBox<Symbol> getCboMercado01() {
         return cboMercado01;
     }
 
-    public void setCboMercado01(ComboBox<ActiveSymbol> cboMercado01) {
+    public void setCboMercado01(ComboBox<Symbol> cboMercado01) {
         this.cboMercado01 = cboMercado01;
     }
 
@@ -1644,11 +1822,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op02 = tbvTransacoes_Op02;
     }
 
-    public ComboBox<ActiveSymbol> getCboMercado02() {
+    public ComboBox<Symbol> getCboMercado02() {
         return cboMercado02;
     }
 
-    public void setCboMercado02(ComboBox<ActiveSymbol> cboMercado02) {
+    public void setCboMercado02(ComboBox<Symbol> cboMercado02) {
         this.cboMercado02 = cboMercado02;
     }
 
@@ -1892,11 +2070,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op03 = tbvTransacoes_Op03;
     }
 
-    public ComboBox<ActiveSymbol> getCboMercado03() {
+    public ComboBox<Symbol> getCboMercado03() {
         return cboMercado03;
     }
 
-    public void setCboMercado03(ComboBox<ActiveSymbol> cboMercado03) {
+    public void setCboMercado03(ComboBox<Symbol> cboMercado03) {
         this.cboMercado03 = cboMercado03;
     }
 
@@ -2140,11 +2318,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op04 = tbvTransacoes_Op04;
     }
 
-    public ComboBox<ActiveSymbol> getCboMercado04() {
+    public ComboBox<Symbol> getCboMercado04() {
         return cboMercado04;
     }
 
-    public void setCboMercado04(ComboBox<ActiveSymbol> cboMercado04) {
+    public void setCboMercado04(ComboBox<Symbol> cboMercado04) {
         this.cboMercado04 = cboMercado04;
     }
 
@@ -2388,11 +2566,11 @@ public class Operacoes implements Initializable {
         this.tbvTransacoes_Op05 = tbvTransacoes_Op05;
     }
 
-    public ComboBox<ActiveSymbol> getCboMercado05() {
+    public ComboBox<Symbol> getCboMercado05() {
         return cboMercado05;
     }
 
-    public void setCboMercado05(ComboBox<ActiveSymbol> cboMercado05) {
+    public void setCboMercado05(ComboBox<Symbol> cboMercado05) {
         this.cboMercado05 = cboMercado05;
     }
 
@@ -2443,4 +2621,14 @@ public class Operacoes implements Initializable {
     public void setTpnLblLucro_Op05(Label tpnLblLucro_Op05) {
         this.tpnLblLucro_Op05 = tpnLblLucro_Op05;
     }
+
+    public static ObservableList<Operador> getOperadorObservableList() {
+        return operadorObservableList;
+    }
+
+    public static void setOperadorObservableList(ObservableList<Operador> operadorObservableList) {
+        Operacoes.operadorObservableList = operadorObservableList;
+    }
+
+
 }

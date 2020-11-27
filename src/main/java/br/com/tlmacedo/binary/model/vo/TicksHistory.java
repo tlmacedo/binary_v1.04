@@ -1,21 +1,31 @@
 package br.com.tlmacedo.binary.model.vo;
 
-public class TicksHistory {
+import br.com.tlmacedo.binary.model.enums.TICK_STYLE;
+
+import java.io.Serializable;
+
+public class TicksHistory  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     String ticks_history;
-    Integer adjust_start_time;
+    String end = "latest";
+    Integer adjust_start_time = 1;
     Integer count;
-    String end;
-    Integer start;
+    Integer granularity;
+    Integer start = 1;
     String style;
+    Integer subscribe = 1;
+    Passthrough passthrough;
 
-    public TicksHistory(String ticks_history, Integer count) {
-        this.ticks_history = ticks_history;
-        this.adjust_start_time = 1;
+    public TicksHistory(String symbol, Integer count, TICK_STYLE tickStyle, Integer candleTime, Passthrough passthrough) {
+
+        this.ticks_history = symbol;
         this.count = count;
-        this.end = "latest";
-        this.start = 1;
-        this.style = "ticks";
+        this.style = tickStyle.toString();
+        if (tickStyle.equals(TICK_STYLE.CANDLES))
+            this.granularity = candleTime;
+        this.passthrough = passthrough;
+
     }
 
     public String getTicks_history() {
@@ -24,6 +34,14 @@ public class TicksHistory {
 
     public void setTicks_history(String ticks_history) {
         this.ticks_history = ticks_history;
+    }
+
+    public String getEnd() {
+        return end;
+    }
+
+    public void setEnd(String end) {
+        this.end = end;
     }
 
     public Integer getAdjust_start_time() {
@@ -42,12 +60,12 @@ public class TicksHistory {
         this.count = count;
     }
 
-    public String getEnd() {
-        return end;
+    public Integer getGranularity() {
+        return granularity;
     }
 
-    public void setEnd(String end) {
-        this.end = end;
+    public void setGranularity(Integer granularity) {
+        this.granularity = granularity;
     }
 
     public Integer getStart() {
@@ -66,15 +84,39 @@ public class TicksHistory {
         this.style = style;
     }
 
+    public Integer getSubscribe() {
+        return subscribe;
+    }
+
+    public void setSubscribe(Integer subscribe) {
+        this.subscribe = subscribe;
+    }
+
+    public Passthrough getPassthrough() {
+        return passthrough;
+    }
+
+    public void setPassthrough(Passthrough passthrough) {
+        this.passthrough = passthrough;
+    }
+
     @Override
     public String toString() {
         return "TicksHistory{" +
                 "ticks_history='" + ticks_history + '\'' +
+                ", end='" + end + '\'' +
                 ", adjust_start_time=" + adjust_start_time +
                 ", count=" + count +
-                ", end='" + end + '\'' +
+                granularity != null
+                ? ", granularity=" + granularity
+                : "" +
                 ", start=" + start +
                 ", style='" + style + '\'' +
+                ", subscribe=" + subscribe +
+                passthrough != null
+                ? ", passthrough=" + passthrough
+                : "" +
                 '}';
     }
+
 }

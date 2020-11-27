@@ -7,11 +7,11 @@ import br.com.tlmacedo.binary.model.vo.*;
 import br.com.tlmacedo.binary.model.vo.Error;
 import br.com.tlmacedo.binary.services.Util_Json;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javafx.collections.FXCollections;
-import javassist.compiler.ast.Symbol;
+import javafx.application.Platform;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,6 +26,8 @@ public class WSClient extends WebSocketListener {
     private Error error;
     private History history;
     private Tick tick;
+    private Candle candle;
+    private Passthrough passthrough;
     private Proposal proposal;
     private Authorize authorize;
     private Buy buy;
@@ -54,24 +56,29 @@ public class WSClient extends WebSocketListener {
 
     @Override
     public void onMessage(@NotNull WebSocket webSocket, @NotNull String text) {
+        System.out.printf("***%s\n", text);
         setMsgType((Msg_type) Util_Json.getMsg_Type(text));
         imprime(text, getMsgType().getMsgType());
 
-//        Object obj = null;
-//        try {
-//            obj = Util_Json.getObject_from_String(text, Error.class);
-//            setError((Error) obj);
-//            refreshError();
-//        } catch (Exception ex){
-        switch (getMsgType().getMsgType()) {
-            case ACTIVE_SYMBOLS -> {
-                System.out.printf("será que vai????\n");
-                setSymbols((Symbols) Util_Json.getObject_from_String(text, Symbols.class));
-                System.out.printf("result: %s\n", getSymbols());
-                refreshActiveSymbols();
+        if (getMsgType().getMsgType() != null) {
+            switch (getMsgType().getMsgType()) {
+                case ACTIVE_SYMBOLS -> {
+                    System.out.printf("será que vai????\n");
+                    setSymbols((Symbols) Util_Json.getObject_from_String(text, Symbols.class));
+                    System.out.printf("result: %s\n", getSymbols());
+                    refreshActiveSymbols();
+                }
+                case HISTORY -> {
+                    
+//                    Integer symbolId = Operacoes.getSymbolId(Util_Json.getValue_from_EchoReq(text, "ticks_history"));
+//                    if (symbolId == null) return;
+                    setPassthrough((Passthrough) Util_Json.getObject_from_String(text, Passthrough.class));
+                    setHistory((History) Util_Json.getObject_from_String(text, History.class));
+                    refreshHistoryTick(getPassthrough(), getHistory());
+                }
             }
         }
-//        }
+
     }
 
     /**
@@ -89,7 +96,7 @@ public class WSClient extends WebSocketListener {
                 if (msgType.equals(MSG_TYPE.TICK))
                     return;
             }
-            System.out.printf("...%s\n", text);
+            System.out.printf("..0..%s\n", text);
         } else {
             boolean print = false;
             switch (msgType) {
@@ -101,9 +108,10 @@ public class WSClient extends WebSocketListener {
                 case BUY -> print = CONSOLE_BINARY_BUY;
                 case TRANSACTION -> print = CONSOLE_BINARY_TRANSACTION;
                 case HISTORY -> print = CONSOLE_BINARY_HISTORY;
+                default -> print = (CONSOLE_BINARY_ALL || CONSOLE_BINARY_ALL_SEM_TICKS);
             }
             if (print)
-                System.out.printf("...%s\n", text);
+                System.out.printf("..1..%s\n", text);
         }
     }
 
@@ -114,14 +122,14 @@ public class WSClient extends WebSocketListener {
     }
 
     private void refreshActiveSymbols() {
-        ActiveSymbol symbol;
-        List<ActiveSymbol> activeSymbolList =
-        getSymbols().getActive_symbols().stream()
-                .filter(activeSymbol -> activeSymbol.getMarket().equals("synthetic_index"))
-                .collect(Collectors.toList());
-        for (int i = 0; i < activeSymbolList.size(); i++) {
-            symbol = activeSymbolList.get(i);
-            Operacoes.getActiveSymbolDAO().merger(symbol);
+        Symbol symbol;
+        List<Symbol> symbolList =
+                getSymbols().getActive_symbols().stream()
+                        .filter(activeSymbol -> activeSymbol.getMarket().equals("synthetic_index"))
+                        .collect(Collectors.toList());
+        for (int i = 0; i < symbolList.size(); i++) {
+            symbol = symbolList.get(i);
+            Operacoes.getSymbolDAO().merger(symbol);
         }
     }
 
@@ -151,8 +159,30 @@ public class WSClient extends WebSocketListener {
 
     }
 
-    private void refreshHistoryTick(Integer symbolId, History history) {
+    private void refreshHistoryTick(Passthrough passthrough, History history) {
+        Platform.runLater(() -> {
+            for (int digito = 0; digito < 10; digito++) {
+                Operacoes.getGraficoBarrasListQtdDigito_R()[passthrough.getOperador()].get(digito).setValue(0);
+            }
 
+            Operacoes.getHistoricoDeTicksObservableList()[passthrough.getOperador()].clear();
+            Operacoes.getHistoricoDeTicksAnaliseObservableList()[passthrough.getOperador()].clear();
+
+            HistoricoDeTicks ticks;
+            for (int i = 0; i < getHistory().getTimes().size(); i++) {
+                int finalI = i;
+                if (Operacoes.getHistoricoDeTicksAnaliseObservableList()[passthrough.getOperador()].stream()
+                        .anyMatch(historicoDeTicks -> historicoDeTicks.getTime() == getHistory().getTimes().get(finalI)))
+                    continue;
+                ticks = new HistoricoDeTicks(passthrough.getOperador(),
+                        getHistory().getPrices().get(i), getHistory().getTimes().get(i));
+                Operacoes.getHistoricoDeTicksAnaliseObservableList()[passthrough.getOperador()].add(0, ticks);
+                Operacoes.getHistoricoDeTicksAnaliseObservableList()[passthrough.getOperador()].sort(Comparator.comparing(HistoricoDeTicks::getTime).reversed());
+            }
+            for (HistoricoDeTicks tick : Operacoes.getHistoricoDeTicksAnaliseObservableList()[passthrough.getOperador()])
+                if (Operacoes.getHistoricoDeTicksObservableList()[passthrough.getOperador()].size() < Operacoes.getGraficoQtdTicks())
+                    Operacoes.getHistoricoDeTicksObservableList()[passthrough.getOperador()].add(tick);
+        });
     }
 
     /**
@@ -250,5 +280,21 @@ public class WSClient extends WebSocketListener {
 
     public void setSymbols(Symbols symbols) {
         this.symbols = symbols;
+    }
+
+    public Candle getCandle() {
+        return candle;
+    }
+
+    public void setCandle(Candle candle) {
+        this.candle = candle;
+    }
+
+    public Passthrough getPassthrough() {
+        return passthrough;
+    }
+
+    public void setPassthrough(Passthrough passthrough) {
+        this.passthrough = passthrough;
     }
 }

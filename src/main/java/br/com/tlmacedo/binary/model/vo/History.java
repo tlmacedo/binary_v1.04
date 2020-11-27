@@ -1,10 +1,12 @@
 package br.com.tlmacedo.binary.model.vo;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-public class History {
+public class History  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     List<Integer> times = new ArrayList<>();
     List<BigDecimal> prices = new ArrayList<>();

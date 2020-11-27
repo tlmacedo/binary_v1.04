@@ -1,8 +1,10 @@
 package br.com.tlmacedo.binary.model.vo;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
-public class Proposal {
+public class Proposal  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     BigDecimal ask_price;
     Integer date_start;

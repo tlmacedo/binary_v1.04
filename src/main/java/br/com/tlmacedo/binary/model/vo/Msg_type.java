@@ -2,9 +2,15 @@ package br.com.tlmacedo.binary.model.vo;
 
 import br.com.tlmacedo.binary.model.enums.MSG_TYPE;
 
-public class Msg_type {
+import java.io.Serializable;
+
+public class Msg_type  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     MSG_TYPE msgType;
+
+    public Msg_type() {
+    }
 
     public Msg_type(String strMsgType) {
         this.msgType = MSG_TYPE.valueOf(strMsgType.toUpperCase());

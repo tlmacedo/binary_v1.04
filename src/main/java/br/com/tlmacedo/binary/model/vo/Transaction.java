@@ -1,7 +1,5 @@
 package br.com.tlmacedo.binary.model.vo;
 
-import br.com.tlmacedo.binary.controller.Operacoes;
-
 import javax.persistence.*;
 import java.math.BigDecimal;
 
@@ -25,7 +23,7 @@ public class Transaction {
     String low_barrier;
     Integer purchase_time;
     String stop_out;
-    ActiveSymbol activeSymbol;
+    Symbol symbol;
     String take_profit;
     Long transaction_id;
     Integer transaction_time;
@@ -163,12 +161,12 @@ public class Transaction {
     }
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    public ActiveSymbol getActiveSymbol() {
-        return activeSymbol;
+    public Symbol getActiveSymbol() {
+        return symbol;
     }
 
-    public void setActiveSymbol(ActiveSymbol activeSymbol) {
-        this.activeSymbol = activeSymbol;
+    public void setActiveSymbol(Symbol symbol) {
+        this.symbol = symbol;
     }
 
     //    public void setSymbol(String symbol) {
@@ -218,7 +216,7 @@ public class Transaction {
                 ", low_barrier='" + low_barrier + '\'' +
                 ", purchase_time=" + purchase_time +
                 ", stop_out='" + stop_out + '\'' +
-                ", activeSymbol=" + activeSymbol +
+                ", activeSymbol=" + symbol +
                 ", take_profit='" + take_profit + '\'' +
                 ", transaction_id=" + transaction_id +
                 ", transaction_time=" + transaction_time +

@@ -1,6 +1,9 @@
 package br.com.tlmacedo.binary.model.vo;
 
-public class TransactionsStream {
+import java.io.Serializable;
+
+public class TransactionsStream  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     Integer transaction = 1;
     Integer subscribe = 1;

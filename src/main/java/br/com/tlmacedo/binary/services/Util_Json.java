@@ -24,22 +24,30 @@ public class Util_Json {
     private static ObjectMapper mapper = new ObjectMapper();
 
     public static Object getMsg_Type(String strJson) {
+
         JSONObject obj = new JSONObject(strJson);
-        return new Msg_type(obj.getString("msg_type"));
+        try {
+            return new Msg_type(obj.getString("msg_type"));
+        } catch (Exception ex) {
+            return new Msg_type();
+        }
+
     }
 
     public static String getJson_from_Object(Object object) {
+
         try {
             return getMapper().writeValueAsString(object);
         } catch (Exception ex) {
             ex.printStackTrace();
             return null;
         }
+
     }
 
     public static Object getObject_from_String(String strJson, Class aClass) {
+
         JSONObject obj = new JSONObject(strJson);
-        System.out.printf("aClass:[%s]\n", aClass);
         try {
             return getMapper().readValue(obj.getJSONObject(aClass.getSimpleName().toLowerCase()).toString(), aClass);
         } catch (Exception ex) {
@@ -48,18 +56,8 @@ public class Util_Json {
             } else {
                 try {
                     if (aClass.equals(Symbols.class)) {
-
-                        System.out.printf("entrou aqui aClass:[%s]\n", aClass.getSimpleName());
-                        //getMapper().configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-                        String str =
-                                String.format("{\"active_symbols\": %s}",
-                                        obj.getJSONArray("active_symbols").toString()
-                                );
-                        System.out.printf("return:\n%s\n", str);
-                        System.out.printf("objeto: \n%s\n", getMapper().readValue(str, Symbols.class).getActive_symbols().stream()
-                                .filter(activeSymbol -> activeSymbol.getMarket().equals("synthetic_index"))
-                                .collect(Collectors.toCollection(FXCollections::observableArrayList))
-                        );
+                        String str = String.format("{\"active_symbols\": %s}",
+                                obj.getJSONArray("active_symbols").toString());
                         return getMapper().readValue(str, Symbols.class);
                     } else {
                         return getMapper().readValue(obj.getJSONObject("error").toString(), Error.class);
@@ -72,9 +70,11 @@ public class Util_Json {
             }
         }
         return null;
+
     }
 
     public static void printJson_from_Object(Object object, String label) {
+
         try {
             if (label != null)
                 System.out.printf("%s:\n", label);
@@ -82,14 +82,18 @@ public class Util_Json {
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+
     }
 
     public static String getValue_from_EchoReq(String echo_req, String field) {
+
         JSONObject obj = new JSONObject(echo_req);
         return obj.getJSONObject("echo_req").getString(field);
+
     }
 
     public static void getHistory_from_String(Integer symbolId, String strJson) {
+
 //        JSONObject obj = new JSONObject(strJson).getJSONObject("history");
 //        List<BigDecimal> listPrices = new ArrayList((Collection) obj.getJSONArray("prices"));
 //        List<Integer> listTimes = new ArrayList((Collection) obj.getJSONArray("times"));
@@ -100,6 +104,7 @@ public class Util_Json {
 //        }
 //        Operacoes.getHistoricoDeTicksAnaliseObservableList()[symbolId]
 //                .setAll(historicoDeTicksList.sorted(Comparator.comparing(HistoricoDeTicks::getTime)));
+
     }
 
     public static ObjectMapper getMapper() {

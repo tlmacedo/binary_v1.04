@@ -1,6 +1,9 @@
 package br.com.tlmacedo.binary.model.vo;
 
-public class Error {
+import java.io.Serializable;
+
+public class Error  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     String code;
     String message;

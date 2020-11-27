@@ -4,11 +4,13 @@ import br.com.tlmacedo.binary.services.Service_Mascara;
 import javafx.beans.property.BooleanProperty;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.math.BigDecimal;
 
-@Entity(name = "ActiveSymbol")
-@Table(name = "active_symbol")
-public class ActiveSymbol {
+@Entity(name = "Symbol")
+@Table(name = "symbol")
+public class Symbol  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     Long id;
     Boolean allow_forward_starting;
@@ -23,7 +25,7 @@ public class ActiveSymbol {
     String symbol;
     String symbol_type;
 
-    public ActiveSymbol() {
+    public Symbol() {
     }
 
     @Id
@@ -137,19 +139,24 @@ public class ActiveSymbol {
 
     @Override
     public String toString() {
-        return "ActiveSymbol{" +
-                "id=" + id +
-                ", allow_forward_starting=" + allow_forward_starting +
-                ", display_name='" + display_name + '\'' +
-                ", exchange_is_open=" + exchange_is_open +
-                ", is_trading_suspended=" + is_trading_suspended +
-                ", market='" + market + '\'' +
-                ", market_display_name='" + market_display_name + '\'' +
-                ", pip=" + pip +
-                ", submarket='" + submarket + '\'' +
-                ", submarket_display_name='" + submarket_display_name + '\'' +
-                ", symbol='" + symbol + '\'' +
-                ", symbol_type='" + symbol_type + '\'' +
-                '}';
+        return String.format("%s", getDisplay_name());
     }
+
+    //    @Override
+//    public String toString() {
+//        return "ActiveSymbol{" +
+//                "id=" + id +
+//                ", allow_forward_starting=" + allow_forward_starting +
+//                ", display_name='" + display_name + '\'' +
+//                ", exchange_is_open=" + exchange_is_open +
+//                ", is_trading_suspended=" + is_trading_suspended +
+//                ", market='" + market + '\'' +
+//                ", market_display_name='" + market_display_name + '\'' +
+//                ", pip=" + pip +
+//                ", submarket='" + submarket + '\'' +
+//                ", submarket_display_name='" + submarket_display_name + '\'' +
+//                ", symbol='" + symbol + '\'' +
+//                ", symbol_type='" + symbol_type + '\'' +
+//                '}';
+//    }
 }

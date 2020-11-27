@@ -1,29 +1,30 @@
 package br.com.tlmacedo.binary.model.vo;
 
 
-import br.com.tlmacedo.binary.services.Service_Mascara;
 import javafx.beans.property.*;
 
 import javax.persistence.*;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
-@Entity(name = "HistoricoDeTicks")
-@Table(name = "historico_de_ticks")
-public class HistoricoDeTicks implements Serializable {
+@Entity(name = "HistoricoDeCandles")
+@Table(name = "historico_de_candles")
+public class HistoricoDeCandles implements Serializable {
     public static final long serialVersionUID = 1L;
 
     LongProperty id = new SimpleLongProperty();
     ObjectProperty<Symbol> activeSymbol = new SimpleObjectProperty<>();
-    ObjectProperty<BigDecimal> price = new SimpleObjectProperty<>();
-    IntegerProperty ultimoDigito = new SimpleIntegerProperty();
+    ObjectProperty<BigDecimal> open = new SimpleObjectProperty<>();
+    ObjectProperty<BigDecimal> high = new SimpleObjectProperty<>();
+    ObjectProperty<BigDecimal> low = new SimpleObjectProperty<>();
+    ObjectProperty<BigDecimal> close = new SimpleObjectProperty<>();
     IntegerProperty pip_size = new SimpleIntegerProperty();
     IntegerProperty time = new SimpleIntegerProperty();
 
-    public HistoricoDeTicks() {
+    public HistoricoDeCandles() {
     }
 
-    public HistoricoDeTicks(Integer symbolId, BigDecimal price, Integer time) {
+    public HistoricoDeCandles(Integer symbolId, BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close, Integer time) {
 ////        this.activeSymbol = new SimpleObjectProperty<>(Operacoes.getSymbolObservableList().get(symbolId));
 //        this.price = new SimpleObjectProperty<>(price);
 //        if (getSymbol().getName().contains("1HZ"))
@@ -62,29 +63,55 @@ public class HistoricoDeTicks implements Serializable {
     }
 
     @Column(length = 19, nullable = false, scale = 4)
-    public BigDecimal getPrice() {
-        return price.get();
+    public BigDecimal getOpen() {
+        return open.get();
     }
 
-    public ObjectProperty<BigDecimal> priceProperty() {
-        return price;
+    public ObjectProperty<BigDecimal> openProperty() {
+        return open;
     }
 
-    public void setPrice(BigDecimal price) {
-        this.price.set(price);
+    public void setOpen(BigDecimal open) {
+        this.open.set(open);
     }
 
-    @Column(length = 1, nullable = false)
-    public int getUltimoDigito() {
-        return ultimoDigito.get();
+    @Column(length = 19, nullable = false, scale = 4)
+    public BigDecimal getHigh() {
+        return high.get();
     }
 
-    public IntegerProperty ultimoDigitoProperty() {
-        return ultimoDigito;
+    public ObjectProperty<BigDecimal> highProperty() {
+        return high;
     }
 
-    public void setUltimoDigito(int ultimoDigito) {
-        this.ultimoDigito.set(ultimoDigito);
+    public void setHigh(BigDecimal high) {
+        this.high.set(high);
+    }
+
+    @Column(length = 19, nullable = false, scale = 4)
+    public BigDecimal getLow() {
+        return low.get();
+    }
+
+    public ObjectProperty<BigDecimal> lowProperty() {
+        return low;
+    }
+
+    public void setLow(BigDecimal low) {
+        this.low.set(low);
+    }
+
+    @Column(length = 19, nullable = false, scale = 4)
+    public BigDecimal getClose() {
+        return close.get();
+    }
+
+    public ObjectProperty<BigDecimal> closeProperty() {
+        return close;
+    }
+
+    public void setClose(BigDecimal close) {
+        this.close.set(close);
     }
 
     @Column(length = 1, nullable = false)
@@ -113,24 +140,21 @@ public class HistoricoDeTicks implements Serializable {
         this.time.set(time);
     }
 
-    @Transient
-    public void setUltimoDigito() {
-        String str = getQuoteCompreto();
-        setUltimoDigito(Integer.parseInt(str.substring(str.length() - 1)));
-    }
+//    @Transient
+//    public String getQuoteCompreto() {
+//        return Service_Mascara.getValorFormatado(getPip_size(), getPrice());
+//    }
 
-    @Transient
-    public String getQuoteCompreto() {
-        return Service_Mascara.getValorFormatado(getPip_size(), getPrice());
-    }
 
     @Override
     public String toString() {
-        return "HistoricoDeTicks{" +
+        return "HistoricoDeCandles{" +
                 "id=" + id +
                 ", activeSymbol=" + activeSymbol +
-                ", price=" + price +
-                ", ultimoDigito=" + ultimoDigito +
+                ", open=" + open +
+                ", high=" + high +
+                ", low=" + low +
+                ", close=" + close +
                 ", pip_size=" + pip_size +
                 ", time=" + time +
                 '}';

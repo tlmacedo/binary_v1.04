@@ -1,7 +1,7 @@
 package br.com.tlmacedo.binary.model.tableModel;
 
 import br.com.tlmacedo.binary.controller.Operacoes;
-import br.com.tlmacedo.binary.model.vo.ActiveSymbol;
+import br.com.tlmacedo.binary.model.vo.Symbol;
 import br.com.tlmacedo.binary.model.vo.Transacoes;
 import br.com.tlmacedo.binary.services.Service_Mascara;
 import javafx.beans.property.*;
@@ -21,7 +21,7 @@ import static br.com.tlmacedo.binary.interfaces.Constants.DTF_TMODEL_DATA_TRANSA
 
 public class TmodelTransacoes {
 
-    private ActiveSymbol activeSymbol;
+    private Symbol symbol;
     private TablePosition tp;
     private TableView<Transacoes> tbvTransacoes;
     private ObservableList<Transacoes> transacoesObservableList;
@@ -50,7 +50,7 @@ public class TmodelTransacoes {
     private ObjectProperty<BigDecimal> totalLucro = new SimpleObjectProperty<>(BigDecimal.ZERO);
 
     public TmodelTransacoes(Integer activeSymbolId) {
-        this.activeSymbol = Operacoes.getActiveSymbolObservableList().stream()
+        this.symbol = Operacoes.getActiveSymbolObservableList().stream()
                 .filter(activeSymbol1 -> activeSymbol1.getId().intValue() == activeSymbolId)
                 .findFirst().orElse(null);
     }
@@ -225,12 +225,12 @@ public class TmodelTransacoes {
                         .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP));
     }
 
-    public ActiveSymbol getActiveSymbol() {
-        return activeSymbol;
+    public Symbol getActiveSymbol() {
+        return symbol;
     }
 
-    public void setActiveSymbol(ActiveSymbol activeSymbol) {
-        this.activeSymbol = activeSymbol;
+    public void setActiveSymbol(Symbol symbol) {
+        this.symbol = symbol;
     }
 
     public TablePosition getTp() {

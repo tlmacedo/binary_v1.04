@@ -5,7 +5,10 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
-public class SimNao {
+import java.io.Serializable;
+
+public class SimNao  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     BooleanProperty sim = new SimpleBooleanProperty();
     StringProperty descricao = new SimpleStringProperty();

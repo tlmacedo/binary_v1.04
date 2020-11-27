@@ -13,7 +13,9 @@ public enum MSG_TYPE {
     BUY(4, "buy"),
     HISTORY(5, "history"),
     TRANSACTION(6, "transaction"),
-    ACTIVE_SYMBOLS(7, "active_symbols");
+    ACTIVE_SYMBOLS(7, "active_symbols"),
+    CANDLES(8, "candles"),
+    OHLC(9, "ohlc");
 
 
     private Integer cod;

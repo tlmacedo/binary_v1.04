@@ -3,9 +3,11 @@ package br.com.tlmacedo.binary.model.vo;
 import br.com.tlmacedo.binary.model.enums.CONTRACT_TYPE;
 import br.com.tlmacedo.binary.model.enums.DURATION_UNIT;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
-public class PriceProposal {
+public class PriceProposal  implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     Integer proposal;
     BigDecimal amount;

@@ -1,6 +1,9 @@
 package br.com.tlmacedo.binary.model.vo;
 
-public class ActiveSymbols {
+import java.io.Serializable;
+
+public class ActiveSymbols implements Serializable {
+    public static final long serialVersionUID = 1L;
 
     String active_symbols;
     String product_type;
@@ -28,8 +31,10 @@ public class ActiveSymbols {
 
     @Override
     public String toString() {
-        return String.format("{\"active_symbols\":\"%s\", \"product_type\":\"%s\"}",
-                getActive_symbols(), getProduct_type());
+        return "ActiveSymbols{" +
+                "active_symbols='" + active_symbols + '\'' +
+                ", product_type='" + product_type + '\'' +
+                '}';
     }
 
 }
